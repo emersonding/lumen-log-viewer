@@ -93,13 +93,24 @@ struct ContentView: View {
 
     private var loadingView: some View {
         VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-                .accessibilityLabel("Loading")
+            ProgressView(value: viewModel.loadingProgress, total: 1.0)
+                .progressViewStyle(.linear)
+                .frame(width: 300)
+                .accessibilityLabel("Loading progress")
+                .accessibilityValue("\(Int(viewModel.loadingProgress * 100)) percent")
 
-            Text("Loading log file...")
+            let phase = viewModel.loadingProgress < 0.3 ? "Indexing lines..." : "Parsing entries..."
+            let percent = Int(viewModel.loadingProgress * 100)
+
+            Text("\(phase) \(percent)%")
                 .font(.title3)
                 .foregroundStyle(.secondary)
+
+            if let url = viewModel.currentFileURL {
+                Text(url.lastPathComponent)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

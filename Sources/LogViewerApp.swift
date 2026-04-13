@@ -22,6 +22,9 @@ struct LogViewerApp: App {
             ContentView()
                 .environment(viewModel)
                 .onAppear {
+                    // Ensure app shows in dock and comes to front when run as bare binary
+                    NSApplication.shared.setActivationPolicy(.regular)
+                    NSApplication.shared.activate(ignoringOtherApps: true)
                     handleCommandLineArguments()
                 }
         }
@@ -43,14 +46,14 @@ struct LogViewerApp: App {
                 .disabled(viewModel.currentFileURL == nil)
             }
 
-            CommandGroup(replacing: .textEditing) {
+            CommandGroup(after: .textEditing) {
+                Divider()
+
                 Button("Find...") {
                     NotificationCenter.default.post(name: .focusSearchField, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: .command)
                 .disabled(viewModel.currentFileURL == nil)
-
-                Divider()
 
                 Button("Toggle Line Wrap") {
                     viewModel.settingsState.lineWrapDefault.toggle()
