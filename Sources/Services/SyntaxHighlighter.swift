@@ -78,31 +78,66 @@ final class SyntaxHighlighter {
 
     /// Return an NSAttributedString for use in AppKit NSTableView cells.
     ///
-    /// Checks the cache first; on miss, computes via `highlight(_:)` (which populates the cache),
-    /// then applies the requested monospaced font to the entire string.
-    /// - Parameters:
-    ///   - entry: The log entry to highlight
-    ///   - fontSize: Font size for the monospaced font
-    /// - Returns: NSAttributedString with syntax highlighting and font applied
+    /// Builds the attributed string directly with NSColor/NSFont attributes
+    /// (the SwiftUI Color attributes from `highlight()` don't survive the
+    /// AttributedString→NSAttributedString conversion reliably).
     func highlightNS(_ entry: LogEntry, fontSize: Double) -> NSAttributedString {
-        let cacheKey = entry.id.uuidString as NSString
+        let nsCacheKey = ("ns:" + entry.id.uuidString) as NSString
 
-        // Populate cache if needed
-        if cache.object(forKey: cacheKey) == nil {
-            _ = highlight(entry)
+        if let cached = cache.object(forKey: nsCacheKey) {
+            return cached
         }
 
-        // Get cached NSAttributedString and apply font
-        if let cached = cache.object(forKey: cacheKey) {
-            let mutable = NSMutableAttributedString(attributedString: cached)
-            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            mutable.addAttribute(.font, value: font, range: NSRange(location: 0, length: mutable.length))
-            return mutable
-        }
-
-        // Fallback: plain text
+        let rawLine = entry.rawLine
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        return NSAttributedString(string: entry.rawLine, attributes: [.font: font])
+        let boldFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .bold)
+        let result = NSMutableAttributedString(
+            string: rawLine,
+            attributes: [.font: font, .foregroundColor: NSColor.labelColor]
+        )
+        let fullRange = NSRange(rawLine.startIndex..., in: rawLine)
+
+        // Timestamp highlighting
+        if entry.timestamp != nil {
+            for regex in timestampRegexes {
+                if let match = regex.firstMatch(in: rawLine, range: fullRange) {
+                    result.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: match.range)
+                    break
+                }
+            }
+        }
+
+        // Log level highlighting
+        if let level = entry.level, let regex = levelRegexCache[level] {
+            if let match = regex.firstMatch(in: rawLine, range: fullRange) {
+                let nsColor: NSColor
+                switch level {
+                case .fatal: nsColor = .white
+                case .error: nsColor = .systemRed
+                case .warning: nsColor = .systemOrange
+                case .info: nsColor = .controlAccentColor
+                case .debug: nsColor = .systemGray
+                case .trace: nsColor = .systemGray
+                }
+                result.addAttribute(.foregroundColor, value: nsColor, range: match.range)
+                result.addAttribute(.font, value: boldFont, range: match.range)
+                if level == .fatal {
+                    result.addAttribute(.backgroundColor, value: NSColor.systemRed, range: match.range)
+                }
+            }
+        }
+
+        // Quoted string highlighting
+        if let regex = quotedStringRegex {
+            let matches = regex.matches(in: rawLine, range: fullRange)
+            for match in matches {
+                result.addAttribute(.foregroundColor, value: NSColor.systemTeal, range: match.range)
+            }
+        }
+
+        let immutable = result.copy() as! NSAttributedString
+        cache.setObject(immutable, forKey: nsCacheKey)
+        return immutable
     }
 
     // MARK: - Private Highlighting Methods
