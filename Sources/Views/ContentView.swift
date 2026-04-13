@@ -171,8 +171,8 @@ struct ContentView: View {
                     Divider()
                 }
 
-            // Log table view
-            LogTableView(viewModel: vm)
+            // Log table view (AppKit NSTableView for performance with large files)
+            AppKitLogTableView(viewModel: vm)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Status bar

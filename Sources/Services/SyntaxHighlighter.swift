@@ -76,6 +76,35 @@ final class SyntaxHighlighter {
         return result
     }
 
+    /// Return an NSAttributedString for use in AppKit NSTableView cells.
+    ///
+    /// Checks the cache first; on miss, computes via `highlight(_:)` (which populates the cache),
+    /// then applies the requested monospaced font to the entire string.
+    /// - Parameters:
+    ///   - entry: The log entry to highlight
+    ///   - fontSize: Font size for the monospaced font
+    /// - Returns: NSAttributedString with syntax highlighting and font applied
+    func highlightNS(_ entry: LogEntry, fontSize: Double) -> NSAttributedString {
+        let cacheKey = entry.id.uuidString as NSString
+
+        // Populate cache if needed
+        if cache.object(forKey: cacheKey) == nil {
+            _ = highlight(entry)
+        }
+
+        // Get cached NSAttributedString and apply font
+        if let cached = cache.object(forKey: cacheKey) {
+            let mutable = NSMutableAttributedString(attributedString: cached)
+            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            mutable.addAttribute(.font, value: font, range: NSRange(location: 0, length: mutable.length))
+            return mutable
+        }
+
+        // Fallback: plain text
+        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        return NSAttributedString(string: entry.rawLine, attributes: [.font: font])
+    }
+
     // MARK: - Private Highlighting Methods
 
     private func highlightTimestamp(in attributedString: inout AttributedString, rawLine: String) {
