@@ -24,6 +24,11 @@ cp .build/release/LogViewer "$APP_DIR/Contents/MacOS/LogViewer"
 # Copy Info.plist
 cp Info.plist "$APP_DIR/Contents/Info.plist"
 
+# Copy app icon if it exists
+if [ -f "Sources/Resources/AppIcon.icns" ]; then
+    cp Sources/Resources/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
+fi
+
 # Set executable permissions
 chmod +x "$APP_DIR/Contents/MacOS/LogViewer"
 
