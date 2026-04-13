@@ -1,14 +1,17 @@
 # LogViewer
 
-A native macOS log file viewer built with SwiftUI. Designed for developers who need to quickly open, search, and filter large log files with a responsive, IDE-like experience.
+A native macOS log file viewer built with SwiftUI and AppKit. Designed for developers who need to quickly open, search, and filter large log files with a responsive, IDE-like experience.
 
 ## Features
 
-- **Fast file loading** with memory-mapped I/O for large files (tested up to 500MB)
-- **Log level filtering** - toggle FATAL, ERROR, WARNING, INFO, DEBUG, TRACE
-- **Search** with two modes: jump-to-match (highlight + navigate) and filter-to-match (hide non-matches)
+- **High-performance rendering** with AppKit NSTableView — native cell reuse and `reloadData()` handles 700k+ rows smoothly
+- **Fast file loading** with memory-mapped I/O for large files, progress bar during indexing/parsing
+- **Log level filtering** - toggle FATAL, ERROR, WARNING, INFO, DEBUG, TRACE with debounced updates
+- **Bracketed log level parsing** - detects both `[ERROR]` and bare `ERROR` formats
+- **Search** with two modes: jump-to-match (highlight + navigate) and filter-to-match (hide non-matches), O(1) match lookups
 - **Time range filtering** with seconds precision and quick presets (last 5 min, 1 hour, 24 hours, today)
-- **Syntax highlighting** with cached rendering for 60fps scrolling
+- **Syntax highlighting** with pre-compiled regex, cached NSAttributedString rendering, native NSColor for AppKit
+- **Multiline log entries** - stack traces and continuation lines display fully with automatic row heights
 - **Auto-refresh** via file watching (detects appended content, log rotation, file deletion)
 - **Incremental refresh** - reads only new bytes on file change
 - **Keyboard shortcuts** - Cmd+F (search), Cmd+R (refresh), Cmd+O (open), Cmd+1-6 (toggle filters)
@@ -53,13 +56,13 @@ cp -r build/LogViewer.app /Applications/
 
 ## Testing
 
-### Unit tests (127 tests)
+### Unit tests (~139 tests)
 
 ```bash
 swift test
 ```
 
-Covers: LogParser, LogViewModel, FileWatcher, Debouncer, SyntaxHighlighter, Models, Performance, Rendering.
+Covers: LogParser, LogViewModel, FileWatcher, Debouncer, SyntaxHighlighter, AppKitTable, Models, Performance, Rendering.
 
 ### E2E / UI tests (10 tests)
 
@@ -115,7 +118,7 @@ log-viewer/
 │   ├── Services/
 │   │   ├── LogParser.swift    # Chunk-based async parser with regex
 │   │   ├── FileWatcher.swift  # DispatchSource file monitoring
-│   │   └── SyntaxHighlighter.swift # Cached AttributedString rendering
+│   │   └── SyntaxHighlighter.swift # Pre-compiled regex, NSAttributedString cache
 │   ├── Utilities/
 │   │   ├── Debouncer.swift    # Actor-based debounce with Task.sleep
 │   │   └── LineIndex.swift    # Byte-offset line index for O(1) access
@@ -123,7 +126,8 @@ log-viewer/
 │   │   └── LogViewModel.swift # @Observable main view model
 │   └── Views/
 │       ├── ContentView.swift  # Root view (welcome/loading/error/main)
-│       ├── LogTableView.swift # Virtualized log display (LazyVStack)
+│       ├── AppKitLogTableView.swift # NSTableView with cell reuse (primary)
+│       ├── LogTableView.swift # SwiftUI fallback (LazyVStack, windowed)
 │       ├── LogLineView.swift  # Single log line with gutter + highlight
 │       ├── SearchBar.swift    # Search field + match counter + Cmd+F
 │       ├── FilterBar.swift    # Level toggles + All/None
@@ -137,10 +141,15 @@ log-viewer/
 │   ├── FileWatcherTests.swift
 │   ├── DebouncerTests.swift
 │   ├── SyntaxHighlighterTests.swift
+│   ├── AppKitTableTests.swift # NSTableView cell config, multiline, colors
 │   ├── ModelTests.swift
 │   ├── PerformanceTests.swift
 │   ├── RenderingPerformanceTests.swift
 │   └── TestLogs/             # Test data files
+│       ├── small.log         # 100 entries
+│       ├── medium.log        # 10k entries + stack trace samples
+│       ├── large.log         # 736k entries (stress test)
+│       ├── multiline.log     # Multiline entries with stack traces
 │       └── my_oracle.log     # 281-line realistic mock log
 │
 ├── UITests/                   # XCUITest E2E tests (xcodebuild)
