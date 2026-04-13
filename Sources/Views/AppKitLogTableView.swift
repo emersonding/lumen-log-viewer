@@ -198,21 +198,42 @@ struct AppKitLogTableView: NSViewRepresentable {
 
         private func makeContentCell(tableView: NSTableView, entry: LogEntry, font: NSFont, fontSize: Double) -> NSView {
             let cellID = AppKitLogTableView.cellID
+            let cellView: NSTableCellView
             let textField: NSTextField
 
-            if let reused = tableView.makeView(withIdentifier: cellID, owner: self) as? NSTextField {
-                textField = reused
+            if let reused = tableView.makeView(withIdentifier: cellID, owner: self) as? NSTableCellView,
+               let existingTF = reused.textField {
+                cellView = reused
+                textField = existingTF
             } else {
-                textField = NSTextField(labelWithString: "")
-                textField.identifier = cellID
-                textField.isEditable = false
-                textField.isBordered = false
-                textField.drawsBackground = false
-                textField.isSelectable = true
-                textField.lineBreakMode = .byWordWrapping
-                textField.cell?.wraps = true
-                textField.maximumNumberOfLines = 0
+                let tf = NSTextField(wrappingLabelWithString: "")
+                tf.identifier = NSUserInterfaceItemIdentifier("ContentTextField")
+                tf.isEditable = false
+                tf.isBordered = false
+                tf.drawsBackground = false
+                tf.isSelectable = true
+                tf.maximumNumberOfLines = 0
+                tf.translatesAutoresizingMaskIntoConstraints = false
+
+                let cv = NSTableCellView()
+                cv.identifier = cellID
+                cv.textField = tf
+                cv.addSubview(tf)
+
+                NSLayoutConstraint.activate([
+                    tf.topAnchor.constraint(equalTo: cv.topAnchor, constant: 2),
+                    tf.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -2),
+                    tf.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 4),
+                    tf.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -4),
+                ])
+
+                cellView = cv
+                textField = tf
             }
+
+            // Set preferred width so Auto Layout knows when to wrap
+            let contentColumnWidth = tableView.tableColumn(withIdentifier: AppKitLogTableView.contentColumnID)?.width ?? 600
+            textField.preferredMaxLayoutWidth = contentColumnWidth - 8 // minus padding
 
             // Get syntax-highlighted NSAttributedString
             let attributed = highlighter.highlightNS(entry, fontSize: fontSize)
@@ -226,7 +247,7 @@ struct AppKitLogTableView: NSViewRepresentable {
                 textField.attributedStringValue = attributed
             }
 
-            return textField
+            return cellView
         }
 
         // MARK: - Search Match Helpers
