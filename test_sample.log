@@ -1,0 +1,15 @@
+2026-04-13 10:00:00 INFO Application started
+2026-04-13 10:00:01 DEBUG Loading configuration from /etc/app.conf
+2026-04-13 10:00:02 INFO Server listening on port 8080
+2026-04-13 10:00:05 WARNING High memory usage detected: 85%
+2026-04-13 10:00:10 ERROR Failed to connect to database
+2026-04-13 10:00:10 ERROR   at DatabasePool.acquire (pool.js:42)
+2026-04-13 10:00:10 ERROR   at Server.handleRequest (server.js:118)
+2026-04-13 10:00:15 INFO Retrying database connection
+2026-04-13 10:00:16 INFO Database connection established
+2026-04-13 10:00:20 DEBUG Processing request: GET /api/users
+2026-04-13 10:00:21 INFO Request completed in 145ms
+2026-04-13 10:00:30 TRACE Cache hit for key: user_123
+2026-04-13 10:00:35 WARNING Rate limit approaching for IP 192.168.1.100
+2026-04-13 10:00:40 FATAL Critical system failure - shutting down
+2026-04-13 10:00:41 INFO Cleanup completed

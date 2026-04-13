@@ -1,0 +1,229 @@
+//
+//  ContentView.swift
+//  LogViewer
+//
+//  Created on 2026-04-13.
+//
+
+import SwiftUI
+import UniformTypeIdentifiers
+
+@MainActor
+struct ContentView: View {
+    @Environment(LogViewModel.self) private var viewModel
+    @State private var focusSearchBar: Bool = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if viewModel.currentFileURL == nil {
+                // Welcome state
+                welcomeView
+            } else if viewModel.isLoading {
+                // Loading state
+                loadingView
+            } else if viewModel.errorMessage != nil {
+                // Error state
+                errorView
+            } else {
+                // Main content
+                mainContentView
+            }
+        }
+        .frame(minWidth: 800, minHeight: 600)
+        .navigationTitle(windowTitle)
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            handleDrop(providers: providers)
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil), presenting: viewModel.errorMessage) { _ in
+            Button("OK") {
+                viewModel.errorMessage = nil
+            }
+        } message: { errorMessage in
+            Text(errorMessage)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .focusSearchField)) { _ in
+            focusSearchBar = true
+        }
+    }
+
+    // MARK: - Window Title
+
+    private var windowTitle: String {
+        guard let url = viewModel.currentFileURL else {
+            return "LogViewer"
+        }
+
+        let filename = url.lastPathComponent
+        let path = url.path
+        return "LogViewer -- \(filename) -- \(path)"
+    }
+
+    // MARK: - Welcome View
+
+    private var welcomeView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 64))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Log file viewer icon")
+
+            Text("Open a log file to get started")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Open a log file to get started")
+
+            Button("Open File") {
+                openFilePicker()
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut("o", modifiers: .command)
+            .accessibilityLabel("Open log file")
+            .accessibilityHint("Opens a file picker to select a log file")
+
+            Text("or drag and drop a file here")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Welcome screen")
+    }
+
+    // MARK: - Loading View
+
+    private var loadingView: some View {
+        VStack(spacing: 20) {
+            ProgressView()
+                .scaleEffect(1.5)
+                .accessibilityLabel("Loading")
+
+            Text("Loading log file...")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Loading log file")
+    }
+
+    // MARK: - Error View
+
+    private var errorView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 64))
+                .foregroundStyle(.red)
+                .accessibilityLabel("Error icon")
+
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .accessibilityLabel("Error: \(errorMessage)")
+            }
+
+            HStack(spacing: 12) {
+                Button("Dismiss") {
+                    viewModel.errorMessage = nil
+                }
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel("Dismiss error")
+                .accessibilityHint("Closes the error message")
+
+                Button("Open Another File") {
+                    viewModel.errorMessage = nil
+                    openFilePicker()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Open another file")
+                .accessibilityHint("Opens file picker to select a different log file")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Error screen")
+    }
+
+    // MARK: - Main Content View
+
+    @MainActor
+    private var mainContentView: some View {
+        @Bindable var vm = viewModel
+
+        return VStack(spacing: 0) {
+            // Search bar
+            SearchBar(shouldBeFocused: $focusSearchBar)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.controlBackgroundColor))
+                .overlay(alignment: .bottom) {
+                    Divider()
+                }
+
+            // Filter bar
+            FilterBar(viewModel: vm)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.windowBackgroundColor))
+                .overlay(alignment: .bottom) {
+                    Divider()
+                }
+
+            // Log table view
+            LogTableView(viewModel: vm)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Status bar
+            StatusBarView(viewModel: vm)
+        }
+    }
+
+    // MARK: - File Operations
+
+    /// Open system file picker
+    private func openFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [
+            .init(filenameExtension: "log")!,
+            .init(filenameExtension: "txt")!,
+            .data  // All files
+        ]
+        panel.message = "Select a log file to open"
+
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                Task {
+                    await viewModel.openFile(url: url)
+                }
+            }
+        }
+    }
+
+    /// Handle drag-and-drop of files
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else {
+            return false
+        }
+
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { (item, error) in
+            guard let data = item as? Data,
+                  let url = URL(dataRepresentation: data, relativeTo: nil) else {
+                return
+            }
+
+            Task { @MainActor in
+                await viewModel.openFile(url: url)
+            }
+        }
+
+        return true
+    }
+}
+
+// MARK: - Previews
+// Note: Preview macros removed for Swift Package Manager compatibility

@@ -1,0 +1,38 @@
+//
+//  main.swift
+//  LogViewer
+//
+//  Created on 2026-04-13.
+//
+
+import Foundation
+
+@MainActor
+func runTests() async {
+    print("LogViewer - macOS Log File Viewer")
+    print("Phase 1: Foundation complete")
+    print("Ready to build and test")
+
+    // Verify models can be instantiated
+    let entry = LogEntry(lineNumber: 1, message: "Test", rawLine: "Test")
+    let filterState = FilterState()
+    let searchState = SearchState()
+    let settingsState = SettingsState.default
+    let _ = LogViewModel()
+
+    print("✓ All models instantiated successfully")
+    print("✓ LogEntry: \(entry.lineNumber)")
+    print("✓ FilterState: \(filterState.enabledLevels.count) levels enabled")
+    print("✓ SearchState: mode = \(searchState.mode.rawValue)")
+    print("✓ SettingsState: fontSize = \(settingsState.fontSize)")
+    print("✓ LogViewModel initialized")
+}
+
+// Run async main
+Task { @MainActor in
+    await runTests()
+    exit(0)
+}
+
+// Keep the program running until the task completes
+RunLoop.main.run()
