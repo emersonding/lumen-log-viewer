@@ -55,23 +55,25 @@ struct LogTableView: View {
                         )
                         LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(visibleRange, id: \.self) { index in
-                                let entry = viewModel.displayedEntries[index]
-                                LogLineView(
-                                    entry: entry,
-                                    isLineWrapEnabled: viewModel.settingsState.lineWrapDefault,
-                                    fontSize: viewModel.settingsState.fontSize,
-                                    isSearchMatch: isSearchMatch(entry),
-                                    isCurrentMatch: isCurrentMatch(entry),
-                                    searchQuery: viewModel.searchState.query,
-                                    isCaseSensitive: viewModel.searchState.isCaseSensitive
-                                )
-                                .frame(height: rowHeight - 0.5) // subtract divider
-                                .clipped()
-                                .id(entry.id)
+                                if index < viewModel.displayedEntries.count {
+                                    let entry = viewModel.displayedEntries[index]
+                                    LogLineView(
+                                        entry: entry,
+                                        isLineWrapEnabled: viewModel.settingsState.lineWrapDefault,
+                                        fontSize: viewModel.settingsState.fontSize,
+                                        isSearchMatch: isSearchMatch(entry),
+                                        isCurrentMatch: isCurrentMatch(entry),
+                                        searchQuery: viewModel.searchState.query,
+                                        isCaseSensitive: viewModel.searchState.isCaseSensitive
+                                    )
+                                    .frame(height: rowHeight - 0.5)
+                                    .clipped()
+                                    .id(entry.id)
 
-                                Divider()
-                                    .opacity(0.2)
-                                    .frame(height: 0.5)
+                                    Divider()
+                                        .opacity(0.2)
+                                        .frame(height: 0.5)
+                                }
                             }
                         }
                         .offset(y: CGFloat(visibleRange.lowerBound) * rowHeight)
@@ -115,9 +117,10 @@ struct LogTableView: View {
         let firstVisible = Int(scrolled / rowHeight)
         let visibleCount = Int(ceil(viewportHeight / rowHeight))
 
-        let start = max(0, firstVisible - overscan)
+        let start = max(0, min(firstVisible - overscan, totalEntries))
         let end = min(totalEntries, firstVisible + visibleCount + overscan)
 
+        guard start < end else { return 0..<0 }
         return start..<end
     }
 
