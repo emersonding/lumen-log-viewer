@@ -15,12 +15,12 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if viewModel.currentFileURL == nil {
+            if viewModel.isLoading {
+                // Loading state (check first — currentFileURL may be nil during load)
+                loadingView
+            } else if viewModel.currentFileURL == nil {
                 // Welcome state
                 welcomeView
-            } else if viewModel.isLoading {
-                // Loading state
-                loadingView
             } else if viewModel.errorMessage != nil {
                 // Error state
                 errorView
@@ -182,8 +182,8 @@ struct ContentView: View {
                     Divider()
                 }
 
-            // Log table view
-            LogTableView(viewModel: vm)
+            // Log table view (AppKit NSTableView for performance with large files)
+            AppKitLogTableView(viewModel: vm)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Status bar

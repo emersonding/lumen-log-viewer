@@ -50,6 +50,10 @@ final class LogViewModel {
     /// User scroll position at bottom (for auto-scroll decision)
     var isScrolledToBottom: Bool = true
 
+    /// Counter that increments on each applyFilters() call.
+    /// Used by AppKitLogTableView to detect when to reload data.
+    var filterChangeCounter: Int = 0
+
     // MARK: - Private Properties
 
     private let parser = LogParser()
@@ -221,6 +225,7 @@ final class LogViewModel {
                 let filtered = await performFiltering()
                 if !Task.isCancelled {
                     self.displayedEntries = filtered
+                    self.filterChangeCounter += 1
                     // Update search matches if in jump mode
                     if self.searchState.mode == .jumpToMatch && !self.searchState.query.isEmpty {
                         self.updateSearchMatchesInBackground()
@@ -230,6 +235,7 @@ final class LogViewModel {
         } else {
             // For small datasets, filter synchronously
             displayedEntries = performFilteringSynchronous()
+            filterChangeCounter += 1
             // Update search matches for jump mode
             if searchState.mode == .jumpToMatch && !searchState.query.isEmpty {
                 let regex = try? createSearchRegex(query: searchState.query, caseSensitive: searchState.isCaseSensitive)

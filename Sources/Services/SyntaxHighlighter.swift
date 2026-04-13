@@ -76,6 +76,70 @@ final class SyntaxHighlighter {
         return result
     }
 
+    /// Return an NSAttributedString for use in AppKit NSTableView cells.
+    ///
+    /// Builds the attributed string directly with NSColor/NSFont attributes
+    /// (the SwiftUI Color attributes from `highlight()` don't survive the
+    /// AttributedString→NSAttributedString conversion reliably).
+    func highlightNS(_ entry: LogEntry, fontSize: Double) -> NSAttributedString {
+        let nsCacheKey = ("ns:" + entry.id.uuidString) as NSString
+
+        if let cached = cache.object(forKey: nsCacheKey) {
+            return cached
+        }
+
+        let rawLine = entry.rawLine
+        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        let boldFont = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .bold)
+        let result = NSMutableAttributedString(
+            string: rawLine,
+            attributes: [.font: font, .foregroundColor: NSColor.labelColor]
+        )
+        let fullRange = NSRange(rawLine.startIndex..., in: rawLine)
+
+        // Timestamp highlighting
+        if entry.timestamp != nil {
+            for regex in timestampRegexes {
+                if let match = regex.firstMatch(in: rawLine, range: fullRange) {
+                    result.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: match.range)
+                    break
+                }
+            }
+        }
+
+        // Log level highlighting
+        if let level = entry.level, let regex = levelRegexCache[level] {
+            if let match = regex.firstMatch(in: rawLine, range: fullRange) {
+                let nsColor: NSColor
+                switch level {
+                case .fatal: nsColor = .white
+                case .error: nsColor = .systemRed
+                case .warning: nsColor = .systemOrange
+                case .info: nsColor = .controlAccentColor
+                case .debug: nsColor = .systemGray
+                case .trace: nsColor = .systemGray
+                }
+                result.addAttribute(.foregroundColor, value: nsColor, range: match.range)
+                result.addAttribute(.font, value: boldFont, range: match.range)
+                if level == .fatal {
+                    result.addAttribute(.backgroundColor, value: NSColor.systemRed, range: match.range)
+                }
+            }
+        }
+
+        // Quoted string highlighting
+        if let regex = quotedStringRegex {
+            let matches = regex.matches(in: rawLine, range: fullRange)
+            for match in matches {
+                result.addAttribute(.foregroundColor, value: NSColor.systemTeal, range: match.range)
+            }
+        }
+
+        let immutable = result.copy() as! NSAttributedString
+        cache.setObject(immutable, forKey: nsCacheKey)
+        return immutable
+    }
+
     // MARK: - Private Highlighting Methods
 
     private func highlightTimestamp(in attributedString: inout AttributedString, rawLine: String) {
