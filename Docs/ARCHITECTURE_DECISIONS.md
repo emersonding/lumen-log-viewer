@@ -161,3 +161,61 @@ Slight memory overhead (duplicate storage of UUIDs in both array and set). The a
 ### Outcome
 
 Search match highlighting is now O(1) per row regardless of match count.
+
+---
+
+## ADR-6: Pre-built Binary Distribution via Homebrew
+
+**Status:** Accepted
+**Date:** 2026-04-14
+
+### Context
+
+Lumen is distributed via a personal Homebrew tap (`emersonding/tap`). Users install with `brew install emersonding/tap/lumen`. The fully qualified name is required because an unrelated cask named `lumen` (a screen brightness tool) exists in homebrew-cask.
+
+### Problem
+
+The initial Homebrew formula built from source using `swift build`. This had three issues:
+
+1. **Full Xcode required** — Swift + SwiftUI + AppKit needs the complete macOS SDK, which is only available in Xcode (not Command Line Tools alone). This is a ~7GB install requirement for end users.
+2. **Xcode version enforcement** — Homebrew blocks builds when Xcode is more than one minor version behind the latest available. Users with Xcode 26.2 couldn't build when 26.3 was released, even though the code compiles fine on both.
+3. **Gatekeeper rejection** — An earlier approach created a `.app` bundle with ad-hoc code signing inside the formula. Homebrew flagged this as "does not pass macOS Gatekeeper check" and marked the formula as deprecated, because ad-hoc signing doesn't satisfy `spctl --assess`. Proper Gatekeeper compliance requires an Apple Developer ID certificate ($99/year) and notarization.
+
+### Options Evaluated
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Build from source** | Users can audit code; standard Homebrew approach | Requires full Xcode; blocked by version enforcement; slow build |
+| **Homebrew Cask with .app bundle** | Standard for GUI apps; handles quarantine | Name collision with existing `lumen` cask; requires pre-built .app; Gatekeeper issues without Developer ID |
+| **Pre-built binary via Formula** | No Xcode needed; fast install; no Gatekeeper on CLI binaries | Users trust the binary; ARM-only unless cross-compiled |
+| **Apple Developer ID signing** | Passes Gatekeeper; enables .app distribution | $99/year; notarization workflow complexity |
+
+### Decision
+
+**Distribute a pre-built CLI binary via Homebrew Formula.** The release script (`scripts/release.sh`) builds locally using the existing `build_app.sh`, packages the binary into a tarball, uploads it to a GitHub Release, and updates the tap formula to point to the download URL.
+
+Key design choices:
+- **CLI binary only, no .app bundle** — The SwiftUI executable opens its GUI window when launched from the terminal (`lumen` or `lumen /path/to/file.log`). No `.app` bundle means no Gatekeeper check, no code signing required.
+- **ARM-only** (`depends_on arch: :arm64`) — Built on Apple Silicon. Cross-compilation for x86_64 is possible but not worth the complexity for the current user base.
+- **Formula, not Cask** — Simpler deployment; the binary installs to Homebrew's `bin/` like any CLI tool. Avoids the name collision with the existing `lumen` cask.
+
+### Release Flow
+
+```
+./scripts/release.sh 2.1.0
+  → runs build_app.sh (swift build -c release)
+  → packages .build/release/Lumen as lumen-2.1.0-arm64.tar.gz
+  → creates GitHub release with the tarball attached
+  → copies Formula/lumen.rb to the tap repo, patches url/sha256/version
+  → commits and pushes the tap
+```
+
+### Tradeoffs Accepted
+
+- **Users trust a pre-built binary** — Source code is available on GitHub for auditing, and the release script is transparent about the build process.
+- **ARM-only** — Intel Mac users cannot install. This is acceptable given Apple Silicon adoption since 2020.
+- **No .app in Applications** — Users launch via terminal. The trade-off is no Dock icon or Finder integration, but the target audience (developers reviewing log files) works in the terminal.
+
+### Outcome
+
+Users install with `brew install emersonding/tap/lumen` — no Xcode, no version constraints, no Gatekeeper warnings. Install time drops from minutes (source compilation) to seconds (binary download).

@@ -9,6 +9,10 @@ swift build -c release
 # Create .app bundle structure
 APP_NAME="Lumen.app"
 BUILD_DIR="build"
+if [ -z "$BUILD_DIR" ] || [ "$BUILD_DIR" = "/" ] || [ "$BUILD_DIR" = "." ]; then
+    echo "Error: BUILD_DIR has an unsafe value: '${BUILD_DIR}'"
+    exit 1
+fi
 APP_DIR="$BUILD_DIR/$APP_NAME"
 
 echo "📦 Creating app bundle..."

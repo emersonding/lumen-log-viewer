@@ -6,59 +6,114 @@ set -e
 # Example: ./scripts/release.sh 2.1.0
 
 VERSION="${1:?Usage: $0 <version> (e.g. 2.1.0)}"
+if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+    echo "Error: VERSION must be semver (e.g. 2.1.0 or 2.1.0-beta.1)"
+    exit 1
+fi
 TAG="v${VERSION}"
 REPO="emersonding/lumen-log-viewer"
-TAP_REPO_DIR="${TAP_REPO_DIR:-../homebrew-tap}"
+ARCH="$(uname -m)"  # arm64 or x86_64
+
+# Print what completed so far on failure
+trap 'echo ""; echo "ERROR: Release partially completed. Check GitHub release ${TAG} and tap repo state manually."' ERR
+
+# Resolve absolute paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOURCE_FORMULA="${PROJECT_DIR}/Formula/lumen.rb"
+TAP_REPO_DIR="${TAP_REPO_DIR:-$HOMEBREW_TAP_REPO_DIR}"
 FORMULA="${TAP_REPO_DIR}/Formula/lumen.rb"
 
-echo "=== Releasing Lumen ${TAG} ==="
-
-# 1. Ensure we're on a clean main branch
-if [ -n "$(git status --porcelain)" ]; then
-    echo "Error: working directory is not clean"
+# Pre-flight checks
+if [ ! -d "${TAP_REPO_DIR}/.git" ]; then
+    echo "Error: homebrew-tap repo not found at ${TAP_REPO_DIR}"
+    echo "Set TAP_REPO_DIR or HOMEBREW_TAP_REPO_DIR to your homebrew-tap clone location."
     exit 1
 fi
 
-# 2. Create and push the tag
-echo "Tagging ${TAG}..."
-git tag -a "${TAG}" -m "Release ${TAG}"
-git push origin "${TAG}"
+if [ ! -f "${SOURCE_FORMULA}" ]; then
+    echo "Error: source formula not found at ${SOURCE_FORMULA}"
+    exit 1
+fi
 
-# 3. Create GitHub release
-echo "Creating GitHub release..."
-gh release create "${TAG}" \
-    --title "Lumen ${TAG}" \
-    --generate-notes
+echo "=== Releasing Lumen ${TAG} (${ARCH}) ==="
+echo "  Source:  ${PROJECT_DIR}"
+echo "  Tap:     ${TAP_REPO_DIR}"
 
-# 4. Get the source tarball SHA256
-echo "Fetching tarball SHA256..."
-TARBALL_URL="https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz"
-SHA256=$(curl -sL "${TARBALL_URL}" | shasum -a 256 | awk '{print $1}')
+# 1. Warn if working directory is not clean
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Warning: working directory has uncommitted changes."
+    read -p "Continue anyway? [y/N] " answer
+    if [[ "${answer}" != [yY] ]]; then
+        echo "Aborted."
+        exit 1
+    fi
+fi
+
+# 2. Build the binary using the existing build script
+echo ""
+echo "=== Building ==="
+cd "${PROJECT_DIR}"
+./build_app.sh
+
+# 3. Package the binary for Homebrew
+TARBALL_NAME="lumen-${VERSION}-${ARCH}.tar.gz"
+TARBALL_PATH="${PROJECT_DIR}/build/${TARBALL_NAME}"
+echo ""
+echo "=== Packaging ${TARBALL_NAME} ==="
+tar -czf "${TARBALL_PATH}" -C "${PROJECT_DIR}/.build/release" Lumen
+# Rename to lowercase inside the tarball for Homebrew convention
+mkdir -p "${PROJECT_DIR}/build/bottle"
+cp "${PROJECT_DIR}/.build/release/Lumen" "${PROJECT_DIR}/build/bottle/lumen"
+tar -czf "${TARBALL_PATH}" -C "${PROJECT_DIR}/build/bottle" lumen
+rm -rf "${PROJECT_DIR}/build/bottle"
+
+SHA256=$(shasum -a 256 "${TARBALL_PATH}" | awk '{print $1}')
 echo "SHA256: ${SHA256}"
 
-# 5. Update the Homebrew formula
-if [ -f "${FORMULA}" ]; then
-    echo "Updating formula at ${FORMULA}..."
-    sed -i '' "s|url \".*\"|url \"${TARBALL_URL}\"|" "${FORMULA}"
-    sed -i '' "s|sha256 \".*\"|sha256 \"${SHA256}\"|" "${FORMULA}"
-    sed -i '' "s|version \".*\"|version \"${VERSION}\"|" "${FORMULA}" 2>/dev/null || true
-
-    echo "Committing formula update..."
-    cd "${TAP_REPO_DIR}"
-    git add Formula/lumen.rb
-    git commit -m "lumen ${TAG}"
-    git push origin main
-    cd -
+# 4. Tag and release on GitHub
+if git rev-parse "${TAG}" >/dev/null 2>&1; then
+    echo ""
+    echo "Tag ${TAG} already exists."
+    read -p "Skip tagging and just update the formula? [y/N] " answer
+    if [[ "${answer}" != [yY] ]]; then
+        echo "Aborted."
+        exit 1
+    fi
+    # Upload the binary to the existing release
+    echo "Uploading ${TARBALL_NAME} to existing release ${TAG}..."
+    gh release upload "${TAG}" "${TARBALL_PATH}" --clobber
 else
     echo ""
-    echo "Formula not found at ${FORMULA}"
-    echo "Manually update your tap formula with:"
-    echo "  url: ${TARBALL_URL}"
-    echo "  sha256: ${SHA256}"
+    echo "=== Creating release ${TAG} ==="
+    git tag -a "${TAG}" -m "Release ${TAG}"
+    git push origin "${TAG}"
+    gh release create "${TAG}" "${TARBALL_PATH}" \
+        --title "Lumen ${TAG}" \
+        --generate-notes
 fi
+
+# 5. Update the Homebrew formula
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${TARBALL_NAME}"
+echo ""
+echo "=== Updating formula ==="
+mkdir -p "$(dirname "${FORMULA}")"
+cp "${SOURCE_FORMULA}" "${FORMULA}"
+
+# Patch version, url, and sha256 for this release (anchored to line start)
+sed -i '' '/^[[:space:]]*url /s|url \".*\"|url \"'"${DOWNLOAD_URL}"'\"|' "${FORMULA}"
+sed -i '' '/^[[:space:]]*sha256 /s|sha256 \".*\"|sha256 \"'"${SHA256}"'\"|' "${FORMULA}"
+sed -i '' '/^[[:space:]]*version /s|version \".*\"|version \"'"${VERSION}"'\"|' "${FORMULA}"
+
+echo "Committing formula update..."
+cd "${TAP_REPO_DIR}"
+git add Formula/lumen.rb
+git commit -m "lumen ${TAG}"
+git push origin main
+cd -
 
 echo ""
 echo "=== Done! ==="
-echo "Users can install with:"
-echo "  brew tap emersonding/tap"
-echo "  brew install lumen"
+echo "Users can install/upgrade with:"
+echo "  brew install emersonding/tap/lumen"
+echo "  brew upgrade emersonding/tap/lumen"
