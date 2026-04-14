@@ -27,3 +27,6 @@ full_debug.log
 *.swo
 *~
 .*.swp
+
+# Claude
+.claude

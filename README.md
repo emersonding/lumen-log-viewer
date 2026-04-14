@@ -1,6 +1,25 @@
 # LogViewer
 
-A native macOS log file viewer built with SwiftUI and AppKit. Designed for developers who need to quickly open, search, and filter large log files with a responsive, IDE-like experience.
+A simple log file viewer, support log level color rendering, timestamp sort, keyword search, and works on large log files (tested on 500MB log files). Native macOS, built with SwiftUI and AppKit.
+
+## Screenshots
+
+**Quick demo**
+
+<img src="Docs/screenshots/demo.gif" width="600">
+
+
+**Main log view** — color-coded levels, timestamps, and multiline stack traces
+
+<img src="Docs/screenshots/main-view.png" width="600">
+
+**Log level filtering** — toggle levels to isolate errors and warnings
+
+<img src="Docs/screenshots/log-level-filtering.png" width="600">
+
+**Search** — jump to or filter by matching lines with highlighted results
+
+<img src="Docs/screenshots/search.png" width="600">
 
 ## Features
 
@@ -42,39 +61,43 @@ python3 Tests/TestLogs/generate_log.py small.log 1000000 ~/Downloads/1M.log
 python3 Tests/TestLogs/generate_log.py small.log 5000000 ~/Downloads/5M.log
 ```
 
-## Requirements
+## Installation
 
-- macOS 14.0+
-- Swift 5.9+
-- Xcode 16+ (for UI tests only)
+### Option 1: Download pre-built release
 
-## Build and Run
+Download `LogViewer.app.zip` from the [Releases](../../releases) page, unzip, and drag to `/Applications`.
 
-### Build the app bundle
+> **Note:** The app is ad-hoc signed. On first launch, macOS may block it. Go to **System Settings > Privacy & Security** and click **Open Anyway**.
+
+### Option 2: Build from source
+
+Requires macOS 14.0+, Swift 5.9+.
 
 ```bash
+# Clone and build
+git clone https://github.com/emersonding/log-viewer.git
+cd log-viewer
 ./build_app.sh
 ```
 
 This builds the release binary, creates `build/LogViewer.app`, validates the bundle, and runs a smoke test.
 
-### Run the app
+```bash
+# Install to Applications
+cp -r build/LogViewer.app /Applications/
+
+# Or run directly
+open build/LogViewer.app
+```
+
+### Usage
 
 ```bash
 # Open with welcome screen
-open build/LogViewer.app
+open /Applications/LogViewer.app
 
 # Open with a log file
-open build/LogViewer.app --args /path/to/your.log
-
-# Open with the sample log
-open build/LogViewer.app --args "$(pwd)/test_sample.log"
-```
-
-### Install to Applications
-
-```bash
-cp -r build/LogViewer.app /Applications/
+open /Applications/LogViewer.app --args /path/to/your.log
 ```
 
 ## Testing
