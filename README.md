@@ -1,6 +1,6 @@
 # LogViewer
 
-A simple log file viewer, support log level color rendering, timestamp sort, keyword search, and works on large log files (tested on 500MB log files). Native macOS, built with SwiftUI and AppKit.
+A simple gui log file viewer as alternative to macos native Console app, support log level color rendering, timestamp sort, keyword search, and works on large log files (tested on 500MB log files). Native macOS, built with SwiftUI and AppKit.
 
 ## Screenshots
 
