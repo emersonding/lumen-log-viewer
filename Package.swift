@@ -2,24 +2,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "LogViewer",
+    name: "Lumen",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "LogViewer",
-            targets: ["LogViewer"]
+            name: "Lumen",
+            targets: ["Lumen"]
         )
     ],
     targets: [
         .executableTarget(
-            name: "LogViewer",
+            name: "Lumen",
             path: "Sources"
         ),
         .testTarget(
-            name: "LogViewerTests",
-            dependencies: ["LogViewer"],
+            name: "LumenTests",
+            dependencies: ["Lumen"],
             path: "Tests",
             exclude: [
                 "manual_filewatcher_test.swift",
@@ -37,8 +37,8 @@ let package = Package(
         // To run E2E tests: ./build_app.sh && ./test_e2e.sh
         // Or open Package.swift in Xcode and Cmd+U
         // .testTarget(
-        //     name: "LogViewerUITests",
-        //     dependencies: ["LogViewer"],
+        //     name: "LumenUITests",
+        //     dependencies: ["Lumen"],
         //     path: "UITests"
         // )
     ]

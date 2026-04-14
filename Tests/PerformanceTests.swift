@@ -1,13 +1,13 @@
 //
 //  PerformanceTests.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //  Performance verification tests for Task 5.3
 //
 
 import XCTest
-@testable import LogViewer
+@testable import Lumen
 
 /// Performance tests for filter and search operations on large datasets
 @MainActor

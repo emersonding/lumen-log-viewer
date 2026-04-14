@@ -1,4 +1,4 @@
-# LogViewer Testing Guide
+# Lumen Testing Guide
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ If the app opens but no logs appear, check the console output:
 
 ```bash
 ./build_app.sh
-open build/LogViewer.app --args "$(pwd)/test_sample.log" 2>&1 | grep -E "✅|📊|🎯"
+open build/Lumen.app --args "$(pwd)/test_sample.log" 2>&1 | grep -E "✅|📊|🎯"
 ```
 
 Look for:
@@ -173,7 +173,7 @@ func testOpenFile() {
 yes "2026-04-13 10:00:00 INFO Test entry" | head -n 1000000 > large.log
 
 # Time the open operation
-time open build/LogViewer.app --args "$(pwd)/large.log"
+time open build/Lumen.app --args "$(pwd)/large.log"
 
 # Expected: < 3 seconds for 100MB file
 ```

@@ -1,17 +1,17 @@
 //
-//  LogViewerUITests.swift
-//  LogViewer UI Tests
+//  LumenUITests.swift
+//  Lumen UI Tests
 //
 //  End-to-end UI tests using XCUITest framework
 //
 //  Run from CLI:
-//    xcodebuild test -project LogViewer.xcodeproj -scheme LogViewer \
-//      -only-testing LogViewerUITests -destination 'platform=macOS'
+//    xcodebuild test -project Lumen.xcodeproj -scheme Lumen \
+//      -only-testing LumenUITests -destination 'platform=macOS'
 //
 
 import XCTest
 
-final class LogViewerUITests: XCTestCase {
+final class LumenUITests: XCTestCase {
 
     var app: XCUIApplication!
 
@@ -174,7 +174,7 @@ final class LogViewerUITests: XCTestCase {
         let screenshot = app.screenshot()
 
         let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "LogViewer_MainView"
+        attachment.name = "Lumen_MainView"
         attachment.lifetime = .keepAlways
         add(attachment)
 

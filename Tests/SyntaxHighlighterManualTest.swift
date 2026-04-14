@@ -1,6 +1,6 @@
 //
 //  SyntaxHighlighterManualTest.swift
-//  LogViewerTests
+//  LumenTests
 //
 //  Manual verification test for SyntaxHighlighter
 //

@@ -1,11 +1,11 @@
-name: LogViewer
+name: Lumen
 options:
-  bundleIdPrefix: com.logviewer
+  bundleIdPrefix: com.lumen
   deploymentTarget:
     macOS: "14.0"
 
 targets:
-  LogViewer:
+  Lumen:
     type: application
     platform: macOS
     sources:
@@ -13,33 +13,33 @@ targets:
     info:
       path: Generated-Info.plist
       properties:
-        CFBundleName: LogViewer
-        CFBundleExecutable: LogViewer
-        CFBundleIdentifier: com.logviewer.app
+        CFBundleName: Lumen
+        CFBundleExecutable: Lumen
+        CFBundleIdentifier: com.lumen.app
         LSMinimumSystemVersion: "14.0"
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         LSApplicationCategoryType: public.app-category.developer-tools
         NSHumanReadableCopyright: "Copyright © 2026. All rights reserved."
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.logviewer.app
-      PRODUCT_NAME: LogViewer
+      PRODUCT_BUNDLE_IDENTIFIER: com.lumen.app
+      PRODUCT_NAME: Lumen
       SWIFT_VERSION: "5.9"
       CODE_SIGN_IDENTITY: "-"
       CODE_SIGNING_REQUIRED: NO
       ENABLE_HARDENED_RUNTIME: NO
     scheme:
       testTargets:
-        - LogViewerUITests
+        - LumenUITests
       gatherCoverageData: true
 
-  LogViewerUITests:
+  LumenUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
       - path: UITests
     dependencies:
-      - target: LogViewer
+      - target: Lumen
     settings:
       SWIFT_VERSION: "5.9"
       GENERATE_INFOPLIST_FILE: YES

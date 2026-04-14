@@ -1,11 +1,11 @@
 #!/bin/bash
-# Manual E2E Testing Guide for LogViewer
+# Manual E2E Testing Guide for Lumen
 # Run this script to perform manual testing
 
 set -e
 
 echo "════════════════════════════════════════════════════════════"
-echo "   LogViewer Manual E2E Test Suite"
+echo "   Lumen Manual E2E Test Suite"
 echo "════════════════════════════════════════════════════════════"
 echo ""
 
@@ -15,7 +15,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-APP_PATH="build/LogViewer.app"
+APP_PATH="build/Lumen.app"
 TEST_LOG="test_sample.log"
 
 # Check if app exists
@@ -44,7 +44,7 @@ echo ""
 echo "The app will now launch. Follow these steps:"
 echo ""
 echo "1. VERIFY APP LAUNCHES"
-echo "   ${YELLOW}→ Check if LogViewer icon appears in Dock${NC}"
+echo "   ${YELLOW}→ Check if Lumen icon appears in Dock${NC}"
 echo "   ${YELLOW}→ Check if window opens${NC}"
 echo ""
 echo "2. OPEN TEST FILE"
@@ -79,7 +79,7 @@ echo ""
 read -p "Press Enter to launch the app with test file..."
 
 echo ""
-echo -e "${GREEN}🚀 Launching LogViewer...${NC}"
+echo -e "${GREEN}🚀 Launching Lumen...${NC}"
 echo ""
 
 # Launch the app with test log file

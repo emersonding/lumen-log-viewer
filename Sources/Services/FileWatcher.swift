@@ -1,6 +1,6 @@
 //
 //  FileWatcher.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //

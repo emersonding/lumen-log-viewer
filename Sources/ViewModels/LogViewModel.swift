@@ -1,6 +1,6 @@
 //
 //  LogViewModel.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //
@@ -115,7 +115,7 @@ final class LogViewModel {
             // Check file exists and get attributes
             let fileAttributes = try FileManager.default.attributesOfItem(atPath: url.path)
             guard let fileSize = fileAttributes[.size] as? Int64 else {
-                throw LogViewerError.invalidFile
+                throw LumenError.invalidFile
             }
 
             // Check file size constraints
@@ -668,7 +668,7 @@ final class LogViewModel {
 
 // MARK: - Error Types
 
-enum LogViewerError: Error {
+enum LumenError: Error {
     case invalidFile
     case fileTooLarge
     case binaryFile

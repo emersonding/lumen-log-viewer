@@ -1,12 +1,12 @@
 //
 //  LogParserTests.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //
 
 import XCTest
-@testable import LogViewer
+@testable import Lumen
 
 final class LogParserTests: XCTestCase {
     var parser: LogParser!

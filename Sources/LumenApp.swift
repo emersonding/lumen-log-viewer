@@ -1,6 +1,6 @@
 //
-//  LogViewerApp.swift
-//  LogViewer
+//  LumenApp.swift
+//  Lumen - a macOS log reviewer
 //
 //  Created on 2026-04-13.
 //
@@ -14,7 +14,7 @@ extension Notification.Name {
 
 @main
 @MainActor
-struct LogViewerApp: App {
+struct LumenApp: App {
     @State private var viewModel = LogViewModel()
 
     var body: some Scene {

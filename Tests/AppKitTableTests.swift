@@ -1,13 +1,13 @@
 //
 //  AppKitTableTests.swift
-//  LogViewer
+//  Lumen
 //
 //  Tests for AppKit NSTableView integration — cell configuration,
 //  multiline display, and syntax highlighting in NSAttributedString.
 //
 
 import XCTest
-@testable import LogViewer
+@testable import Lumen
 
 @MainActor
 final class AppKitTableTests: XCTestCase {

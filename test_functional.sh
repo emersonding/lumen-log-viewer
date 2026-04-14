@@ -10,11 +10,11 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 TEST_LOG="test_sample.log"
-APP_PATH="build/LogViewer.app"
-DEBUG_OUTPUT="/tmp/logviewer_test_$$. log"
+APP_PATH="build/Lumen.app"
+DEBUG_OUTPUT="/tmp/lumen_test_$$. log"
 
 echo "════════════════════════════════════════════════════════════"
-echo "   LogViewer Functional Tests (No Xcode Required)"
+echo "   Lumen Functional Tests (No Xcode Required)"
 echo "════════════════════════════════════════════════════════════"
 echo ""
 
@@ -22,7 +22,7 @@ echo ""
 cleanup() {
     echo ""
     echo "Cleaning up..."
-    pkill -f "LogViewer" 2>/dev/null || true
+    pkill -f "Lumen" 2>/dev/null || true
     rm -f "$DEBUG_OUTPUT"
 }
 trap cleanup EXIT
@@ -56,7 +56,7 @@ run_test "App bundle exists" \
 
 # Test 2: App is executable
 run_test "App executable is valid" \
-    "[ -x '$APP_PATH/Contents/MacOS/LogViewer' ]"
+    "[ -x '$APP_PATH/Contents/MacOS/Lumen' ]"
 
 # Test 3: Info.plist exists and is valid
 run_test "Info.plist is valid" \
@@ -72,7 +72,7 @@ open "$APP_PATH" --args "$(pwd)/$TEST_LOG" 2>&1 > "$DEBUG_OUTPUT" &
 APP_PID=$!
 sleep 3
 
-if pgrep -f "LogViewer" > /dev/null; then
+if pgrep -f "Lumen" > /dev/null; then
     echo -e "${GREEN}✓ PASS${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
@@ -113,7 +113,7 @@ TESTS_RUN=$((TESTS_RUN + 1))
 echo -n "Test 8: Keyboard shortcuts respond... "
 osascript <<EOF 2>/dev/null
 tell application "System Events"
-    set frontmost of process "LogViewer" to true
+    set frontmost of process "Lumen" to true
     delay 0.5
     keystroke "f" using command down
     delay 0.5
@@ -130,7 +130,7 @@ TESTS_RUN=$((TESTS_RUN + 1))
 
 # Test 9: Memory usage check
 echo -n "Test 9: Memory usage reasonable... "
-MEM_KB=$(ps -o rss= -p $(pgrep -f LogViewer) 2>/dev/null || echo "0")
+MEM_KB=$(ps -o rss= -p $(pgrep -f Lumen) 2>/dev/null || echo "0")
 MEM_MB=$((MEM_KB / 1024))
 
 if [ "$MEM_MB" -lt 500 ]; then
@@ -148,7 +148,7 @@ TESTS_RUN=$((TESTS_RUN + 1))
 # Test 10: App still responsive
 echo -n "Test 10: App remains responsive... "
 sleep 1
-if pgrep -f "LogViewer" > /dev/null && ! pgrep -f "LogViewer.*not responding" > /dev/null; then
+if pgrep -f "Lumen" > /dev/null && ! pgrep -f "Lumen.*not responding" > /dev/null; then
     echo -e "${GREEN}✓ PASS${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else

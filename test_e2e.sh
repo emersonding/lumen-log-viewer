@@ -1,5 +1,5 @@
 #!/bin/bash
-# Automated E2E tests for LogViewer using AppleScript
+# Automated E2E tests for Lumen using AppleScript
 set -e
 
 GREEN='\033[0;32m'
@@ -7,11 +7,11 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-APP_PATH="build/LogViewer.app"
+APP_PATH="build/Lumen.app"
 TEST_LOG="$(pwd)/test_sample.log"
 
 echo "════════════════════════════════════════════════════════════"
-echo "   LogViewer Automated E2E Tests"
+echo "   Lumen Automated E2E Tests"
 echo "════════════════════════════════════════════════════════════"
 echo ""
 
@@ -32,12 +32,12 @@ echo ""
 
 # Test 1: Launch app
 echo "Test 1: Launch application..."
-open "$APP_PATH" --args "$TEST_LOG" 2>&1 | tee /tmp/logviewer_test.log &
+open "$APP_PATH" --args "$TEST_LOG" 2>&1 | tee /tmp/lumen_test.log &
 APP_PID=$!
 sleep 3
 
 # Check if app is running
-if pgrep -f "LogViewer" > /dev/null; then
+if pgrep -f "Lumen" > /dev/null; then
     echo -e "${GREEN}✓${NC} Test 1 PASSED: App launched successfully"
 else
     echo -e "${RED}❌${NC} Test 1 FAILED: App did not launch"
@@ -60,7 +60,7 @@ echo ""
 # Test 3: Verify file was opened (check console output if available)
 echo "Test 3: Verify file opened..."
 sleep 2
-if grep -q "File opened successfully" /tmp/logviewer_test.log 2>/dev/null; then
+if grep -q "File opened successfully" /tmp/lumen_test.log 2>/dev/null; then
     echo -e "${GREEN}✓${NC} Test 3 PASSED: File opened successfully"
 else
     echo -e "${YELLOW}⚠${NC}  Test 3 SKIPPED: Console output not captured (run manually to verify)"
@@ -74,7 +74,7 @@ echo "Test 4: UI interaction test..."
 # Try to activate the app and send keyboard commands
 osascript <<EOF
 tell application "System Events"
-    set frontmost of process "LogViewer" to true
+    set frontmost of process "Lumen" to true
     delay 1
 
     -- Try to open file with Cmd+O (if not already open)
@@ -110,7 +110,7 @@ echo -e "${GREEN}✓${NC} App launches successfully"
 echo -e "${GREEN}✓${NC} App process runs without crashing"
 echo ""
 echo "To verify log display:"
-echo "  1. Check if the LogViewer window shows log entries"
+echo "  1. Check if the Lumen window shows log entries"
 echo "  2. Verify all 15 lines from test_sample.log are visible"
 echo "  3. Test filter buttons (ERROR, WARNING, INFO, DEBUG, TRACE)"
 echo "  4. Test search functionality"

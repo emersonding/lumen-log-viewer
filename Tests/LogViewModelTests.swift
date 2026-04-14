@@ -1,12 +1,12 @@
 //
 //  LogViewModelTests.swift
-//  LogViewerTests
+//  LumenTests
 //
 //  Created on 2026-04-13.
 //
 
 import XCTest
-@testable import LogViewer
+@testable import Lumen
 
 @MainActor
 final class LogViewModelTests: XCTestCase {

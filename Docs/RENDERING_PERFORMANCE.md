@@ -80,7 +80,7 @@ swift test --filter SyntaxHighlighterTests   # Highlighting correctness
 ### Manual Verification
 
 ```bash
-swift build -c release && .build/release/LogViewer Tests/TestLogs/medium.log
+swift build -c release && .build/release/Lumen Tests/TestLogs/medium.log
 ```
 
 Check: filter toggles respond instantly, colors render on log levels, multiline entries expand, search highlights appear, scroll is smooth.
@@ -93,7 +93,7 @@ Check: filter toggles respond instantly, colors render on log levels, multiline 
 
 1. Build release: `swift build -c release`
 2. Open Instruments > Time Profiler
-3. Attach to `.build/release/LogViewer`
+3. Attach to `.build/release/Lumen`
 4. Open `large.log`, scroll rapidly for 30 seconds
 5. Target: no frame drops, hot spots should be in AppKit framework code
 

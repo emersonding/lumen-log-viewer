@@ -39,7 +39,7 @@ open Package.swift
 
 # 2. Wait for dependencies to resolve
 
-# 3. Select "LogViewer" scheme at top
+# 3. Select "Lumen" scheme at top
 # 4. Press Cmd+U to run all tests
 # 5. Or click the ▶️ next to specific test function
 ```
@@ -49,15 +49,15 @@ open Package.swift
 ```bash
 # Run all UI tests
 xcodebuild test \
-  -scheme LogViewer \
+  -scheme Lumen \
   -destination 'platform=macOS' \
-  -only-testing:LogViewerUITests
+  -only-testing:LumenUITests
 
 # Run specific test
 xcodebuild test \
-  -scheme LogViewer \
+  -scheme Lumen \
   -destination 'platform=macOS' \
-  -only-testing:LogViewerUITests/LogViewerUITests/testFileOpenDisplaysLogs
+  -only-testing:LumenUITests/LumenUITests/testFileOpenDisplaysLogs
 ```
 
 ### Option 3: Swift Package Manager (Limited)
@@ -115,7 +115,7 @@ Button("Open File") {
 ### In Tests (Find by identifier):
 
 ```swift
-// LogViewerUITests.swift
+// LumenUITests.swift
 let openButton = app.buttons["openFileButton"] // By identifier
 // or
 let openButton = app.buttons["Open File"] // By visible text
@@ -212,9 +212,9 @@ jobs:
     - name: Run UI Tests
       run: |
         xcodebuild test \
-          -scheme LogViewer \
+          -scheme Lumen \
           -destination 'platform=macOS' \
-          -only-testing:LogViewerUITests
+          -only-testing:LumenUITests
 
     - name: Upload Screenshots
       if: failure()

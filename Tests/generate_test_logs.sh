@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# LogViewer Test File Generator
-# Generates sample log files for testing the LogViewer application.
+# Lumen Test File Generator
+# Generates sample log files for testing the Lumen application.
 #
 # Usage: ./Tests/generate_test_logs.sh [output_dir]
 # Default output directory: ./Tests/TestLogs/
@@ -360,5 +360,5 @@ echo ""
 echo "Summary:"
 wc -l "$OUTPUT_DIR"/*.log | tail -1
 echo ""
-echo "These files are ready for testing the LogViewer application."
+echo "These files are ready for testing the Lumen application."
 echo "Use them in unit tests and performance benchmarks."

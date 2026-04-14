@@ -1,13 +1,13 @@
 //
 //  RenderingPerformanceTests.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //
 //  Performance verification for 60fps scrolling at 1M+ lines
 
 import XCTest
-@testable import LogViewer
+@testable import Lumen
 import SwiftUI
 
 final class RenderingPerformanceTests: XCTestCase {

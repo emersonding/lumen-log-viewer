@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 //
 //  manual_refresh_test.swift
-//  LogViewer
+//  Lumen
 //
 //  Manual test for refresh functionality
 //
@@ -9,8 +9,8 @@
 import Foundation
 
 // Add the source path
-#if canImport(LogViewer)
-import LogViewer
+#if canImport(Lumen)
+import Lumen
 #else
 // Inline minimal types for standalone execution
 @MainActor

@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  LogViewer
+//  Lumen
 //
 //  Created on 2026-04-13.
 //
@@ -50,12 +50,12 @@ struct ContentView: View {
 
     private var windowTitle: String {
         guard let url = viewModel.currentFileURL else {
-            return "LogViewer"
+            return "Lumen"
         }
 
         let filename = url.lastPathComponent
         let path = url.path
-        return "LogViewer -- \(filename) -- \(path)"
+        return "Lumen - \(filename) - \(path)"
     }
 
     // MARK: - Welcome View

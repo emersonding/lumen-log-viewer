@@ -1,12 +1,12 @@
-# LogViewer Test Files
+# Lumen Test Files
 
-This directory contains test utilities and generated test log files for the LogViewer application.
+This directory contains test utilities and generated test log files for the Lumen application.
 
 ## Test File Generator
 
 ### Overview
 
-The `generate_test_logs.sh` script generates sample log files of various sizes and characteristics for testing the LogViewer application's parsing, filtering, search, and performance capabilities.
+The `generate_test_logs.sh` script generates sample log files of various sizes and characteristics for testing the Lumen application's parsing, filtering, search, and performance capabilities.
 
 ### Usage
 
@@ -50,7 +50,7 @@ The script generates 7 test log files:
 #### 5. **binary.bin** (small, ~50 bytes)
 - **Purpose:** Error handling test for binary files
 - **Content:** Mix of text and binary data including null bytes (`\x00`) and high bytes (`\xFF\xFE`)
-- **Expected Behavior:** LogViewer should detect binary content and show error instead of attempting to parse
+- **Expected Behavior:** Lumen should detect binary content and show error instead of attempting to parse
 - **Use Case:** Verify binary file detection (first 8KB check for null bytes)
 
 #### 6. **malformed.log** (~1KB)
@@ -141,7 +141,7 @@ chmod +x Tests/generate_test_logs.sh
 ./Tests/generate_test_logs.sh
 
 # Generate in custom directory
-./Tests/generate_test_logs.sh ~/Downloads/LogViewerTests
+./Tests/generate_test_logs.sh ~/Downloads/LumenTests
 ```
 
 #### Output

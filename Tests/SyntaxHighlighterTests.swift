@@ -1,13 +1,13 @@
 //
 //  SyntaxHighlighterTests.swift
-//  LogViewerTests
+//  LumenTests
 //
 //  Created on 2026-04-13.
 //
 
 import XCTest
 import SwiftUI
-@testable import LogViewer
+@testable import Lumen
 
 final class SyntaxHighlighterTests: XCTestCase {
 

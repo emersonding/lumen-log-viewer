@@ -1,12 +1,12 @@
 //
 //  integration_openfile_test.swift
-//  LogViewer Integration Test
+//  Lumen Integration Test
 //
 //  Manual test to verify openFile implementation
 //
 
 import Foundation
-@testable import LogViewer
+@testable import Lumen
 
 @MainActor
 func testOpenFile() async {
@@ -14,7 +14,7 @@ func testOpenFile() async {
 
     // Create test data directory
     let fileManager = FileManager.default
-    let tempDir = fileManager.temporaryDirectory.appendingPathComponent("log-viewer-test")
+    let tempDir = fileManager.temporaryDirectory.appendingPathComponent("lumen-test")
     try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
     // Create test log file
