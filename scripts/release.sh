@@ -56,17 +56,20 @@ echo "=== Building ==="
 cd "${PROJECT_DIR}"
 ./build_app.sh
 
-# 3. Package the binary for Homebrew
+# 3. Package the binary and .app bundle for Homebrew
 TARBALL_NAME="lumen-${VERSION}-${ARCH}.tar.gz"
 TARBALL_PATH="${PROJECT_DIR}/build/${TARBALL_NAME}"
+STAGING_DIR="${PROJECT_DIR}/build/staging"
 echo ""
 echo "=== Packaging ${TARBALL_NAME} ==="
-tar -czf "${TARBALL_PATH}" -C "${PROJECT_DIR}/.build/release" Lumen
-# Rename to lowercase inside the tarball for Homebrew convention
-mkdir -p "${PROJECT_DIR}/build/bottle"
-cp "${PROJECT_DIR}/.build/release/Lumen" "${PROJECT_DIR}/build/bottle/lumen"
-tar -czf "${TARBALL_PATH}" -C "${PROJECT_DIR}/build/bottle" lumen
-rm -rf "${PROJECT_DIR}/build/bottle"
+rm -rf "${STAGING_DIR}"
+mkdir -p "${STAGING_DIR}"
+# CLI binary (lowercase for Homebrew convention)
+cp "${PROJECT_DIR}/.build/release/Lumen" "${STAGING_DIR}/lumen"
+# .app bundle (built by build_app.sh)
+cp -R "${PROJECT_DIR}/build/Lumen.app" "${STAGING_DIR}/Lumen.app"
+tar -czf "${TARBALL_PATH}" -C "${STAGING_DIR}" lumen Lumen.app
+rm -rf "${STAGING_DIR}"
 
 SHA256=$(shasum -a 256 "${TARBALL_PATH}" | awk '{print $1}')
 echo "SHA256: ${SHA256}"

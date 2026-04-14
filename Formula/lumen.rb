@@ -12,19 +12,24 @@ class Lumen < Formula
 
   def install
     bin.install "lumen"
+    prefix.install "Lumen.app"
   end
 
   def caveats
     <<~EOS
-      Run the GUI log viewer from the terminal:
+      To add Lumen to your Applications folder (Launchpad, Dock, Spotlight):
+        sudo ln -sf #{prefix}/Lumen.app /Applications/Lumen.app
+
+      Run from the terminal:
         lumen
 
-      Or open a log file directly:
-        lumen /path/to/file.log
+      On first launch, macOS Gatekeeper may block the app.
+      Go to System Settings > Privacy & Security > click "Open Anyway".
     EOS
   end
 
   test do
     assert_predicate bin/"lumen", :exist?
+    assert_predicate prefix/"Lumen.app/Contents/MacOS/Lumen", :exist?
   end
 end
