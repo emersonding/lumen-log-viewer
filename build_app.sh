@@ -32,6 +32,10 @@ fi
 # Set executable permissions
 chmod +x "$APP_DIR/Contents/MacOS/LogViewer"
 
+# Ad-hoc code sign so macOS shows "Open Anyway" instead of "damaged"
+echo "🔏 Ad-hoc signing app bundle..."
+codesign --force --deep --sign - "$APP_DIR"
+
 # Verify the bundle is valid
 echo "🔍 Verifying app bundle..."
 
