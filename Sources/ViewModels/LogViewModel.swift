@@ -65,7 +65,20 @@ final class LogViewModel {
     /// Used by AppKitLogTableView to detect when to reload data.
     var filterChangeCounter: Int = 0
 
+    /// All currently opened files (tabs)
+    var openedFiles: [OpenedFile] = []
+
+    /// History of previously opened files
+    var fileHistory: [OpenedFile] = []
+
+    /// Whether the sidebar/history panel is visible
+    var isSidebarVisible: Bool = true
+
     // MARK: - Private Properties
+
+    private let maxHistoryCount = 50
+    private let historyKey = "fileHistoryPaths"
+    private let sidebarVisibleKey = "isSidebarVisible"
 
     private let parser = LogParser()
     private let fileSizeWarningThreshold: Int64 = 1_000_000_000 // 1GB
@@ -97,7 +110,8 @@ final class LogViewModel {
     // MARK: - Initialization
 
     init() {
-        // Initialize with empty state
+        loadHistory()
+        isSidebarVisible = UserDefaults.standard.object(forKey: sidebarVisibleKey) as? Bool ?? true
     }
 
     // MARK: - Public Methods
@@ -193,6 +207,13 @@ final class LogViewModel {
 
             // Apply current filters
             applyFilters()
+
+            // Track opened file and history
+            let openedFile = OpenedFile(url: url)
+            if !openedFiles.contains(where: { $0.url == url }) {
+                openedFiles.append(openedFile)
+            }
+            addToHistory(openedFile)
 
             // Start file watching for auto-refresh
             startFileWatching()
@@ -604,6 +625,70 @@ final class LogViewModel {
         partialLineBuffer = nil
         hasNewContent = false
         errorMessage = nil
+    }
+
+    // MARK: - Opened Files & History
+
+    /// Close an opened file tab
+    func closeOpenedFile(_ file: OpenedFile) {
+        openedFiles.removeAll { $0.url == file.url }
+        if currentFileURL == file.url {
+            if let next = openedFiles.first {
+                Task { await openFile(url: next.url) }
+            } else {
+                closeFile()
+            }
+        }
+    }
+
+    /// Switch to a previously opened file
+    func switchToFile(_ file: OpenedFile) async {
+        await openFile(url: file.url)
+    }
+
+    /// Toggle sidebar visibility
+    func toggleSidebar() {
+        setSidebarVisible(!isSidebarVisible)
+    }
+
+    /// Set sidebar visibility explicitly
+    func setSidebarVisible(_ visible: Bool) {
+        isSidebarVisible = visible
+        UserDefaults.standard.set(visible, forKey: sidebarVisibleKey)
+    }
+
+    /// Remove a single entry from history
+    func removeFromHistory(_ file: OpenedFile) {
+        fileHistory.removeAll { $0.url == file.url }
+        saveHistory()
+    }
+
+    /// Clear all history
+    func clearHistory() {
+        fileHistory.removeAll()
+        saveHistory()
+    }
+
+    /// Add a file to the top of history, deduplicating by URL
+    private func addToHistory(_ file: OpenedFile) {
+        fileHistory.removeAll { $0.url == file.url }
+        fileHistory.insert(file, at: 0)
+        if fileHistory.count > maxHistoryCount {
+            fileHistory = Array(fileHistory.prefix(maxHistoryCount))
+        }
+        saveHistory()
+    }
+
+    /// Persist history paths to UserDefaults
+    private func saveHistory() {
+        let paths = fileHistory.map { $0.url.path }
+        UserDefaults.standard.set(paths, forKey: historyKey)
+    }
+
+    /// Load history from UserDefaults
+    private func loadHistory() {
+        guard let paths = UserDefaults.standard.stringArray(forKey: historyKey) else { return }
+        fileHistory = paths.map { OpenedFile(url: URL(fileURLWithPath: $0)) }
     }
 
     /// Update auto-refresh settings (called when settings change)

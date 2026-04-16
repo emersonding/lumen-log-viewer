@@ -12,25 +12,43 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @Environment(LogViewModel.self) private var viewModel
     @State private var focusSearchBar: Bool = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        VStack(spacing: 0) {
-            if viewModel.isLoading {
-                // Loading state (check first — currentFileURL may be nil during load)
-                loadingView
-            } else if viewModel.currentFileURL == nil {
-                // Welcome state
-                welcomeView
-            } else if viewModel.errorMessage != nil {
-                // Error state
-                errorView
-            } else {
-                // Main content
-                mainContentView
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView()
+                .environment(viewModel)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
+        } detail: {
+            VStack(spacing: 0) {
+                if viewModel.isLoading {
+                    loadingView
+                } else if viewModel.currentFileURL == nil {
+                    welcomeView
+                } else if viewModel.errorMessage != nil {
+                    errorView
+                } else {
+                    mainContentView
+                }
             }
         }
+        .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 800, minHeight: 600)
         .navigationTitle(windowTitle)
+        .onAppear {
+            columnVisibility = viewModel.isSidebarVisible ? .all : .detailOnly
+        }
+        .onChange(of: viewModel.isSidebarVisible) { _, newValue in
+            withAnimation {
+                columnVisibility = newValue ? .all : .detailOnly
+            }
+        }
+        .onChange(of: columnVisibility) { _, newValue in
+            let shouldBeVisible = newValue != .detailOnly
+            if viewModel.isSidebarVisible != shouldBeVisible {
+                viewModel.setSidebarVisible(shouldBeVisible)
+            }
+        }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
         }
