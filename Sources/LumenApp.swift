@@ -63,6 +63,13 @@ struct LumenApp: App {
             }
 
             CommandMenu("View") {
+                Button("Toggle Sidebar") {
+                    viewModel.toggleSidebar()
+                }
+                .keyboardShortcut("0", modifiers: .command)
+
+                Divider()
+
                 Button("Toggle FATAL Filter") {
                     toggleLogLevel(.fatal)
                 }
