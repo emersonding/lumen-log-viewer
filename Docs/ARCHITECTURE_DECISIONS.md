@@ -1,6 +1,7 @@
 # Architecture Decisions
 
-**Date:** 2026-04-18
+**Created:** 2026-04-14
+**Updated:** 2026-04-18
 **Method:** Claude Code iterative development with manual testing
 
 ---
