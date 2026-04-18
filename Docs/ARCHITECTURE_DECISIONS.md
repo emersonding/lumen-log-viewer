@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-**Date:** 2026-04-14
+**Date:** 2026-04-18
 **Method:** Claude Code iterative development with manual testing
 
 ---
@@ -192,19 +192,20 @@ The initial Homebrew formula built from source using `swift build`. This had thr
 
 ### Decision
 
-**Distribute a pre-built CLI binary via Homebrew Formula.** The release script (`scripts/release.sh`) builds locally using the existing `build_app.sh`, packages the binary into a tarball, uploads it to a GitHub Release, and updates the tap formula to point to the download URL.
+**Distribute a pre-built CLI binary plus an ad-hoc-signed `.app` bundle via Homebrew Formula.** The release script (`scripts/release.sh`) builds locally using the existing `build_app.sh`, packages both the CLI binary (`lumen`) and the `.app` bundle (`Lumen.app`) into a single tarball, uploads it to a GitHub Release, and updates the tap formula to point to the download URL.
 
 Key design choices:
-- **CLI binary only, no .app bundle** — The SwiftUI executable opens its GUI window when launched from the terminal (`lumen` or `lumen /path/to/file.log`). No `.app` bundle means no Gatekeeper check, no code signing required.
+- **Formula ships both `lumen` CLI and `Lumen.app`** — The CLI installs into Homebrew's `bin/` for terminal use; the `.app` bundle is placed under the formula's prefix so users can optionally symlink it into `/Applications` (Launchpad/Dock/Spotlight integration). Caveats in the formula print the symlink command.
+- **Ad-hoc signing (`codesign -s -`), no Developer ID** — The `.app` bundle is signed with an ad-hoc identity by `build_app.sh`. Gatekeeper prompts the user to "Open Anyway" on first launch (documented in README and formula caveats). Proper Gatekeeper compliance would require a $99/year Apple Developer ID and notarization, which is out of scope.
 - **ARM-only** (`depends_on arch: :arm64`) — Built on Apple Silicon. Cross-compilation for x86_64 is possible but not worth the complexity for the current user base.
-- **Formula, not Cask** — Simpler deployment; the binary installs to Homebrew's `bin/` like any CLI tool. Avoids the name collision with the existing `lumen` cask.
+- **Formula, not Cask** — Simpler deployment; keeps ownership of both the CLI and the `.app` inside a single formula. Avoids the name collision with the pre-existing `lumen` cask (screen brightness tool) in homebrew-cask.
 
 ### Release Flow
 
 ```
 ./scripts/release.sh 2.1.0
-  → runs build_app.sh (swift build -c release)
-  → packages .build/release/Lumen as lumen-2.1.0-arm64.tar.gz
+  → runs build_app.sh (swift build -c release + ad-hoc sign Lumen.app)
+  → packages .build/release/Lumen + build/Lumen.app into lumen-2.1.0-arm64.tar.gz
   → creates GitHub release with the tarball attached
   → copies Formula/lumen.rb to the tap repo, patches url/sha256/version
   → commits and pushes the tap
@@ -214,8 +215,8 @@ Key design choices:
 
 - **Users trust a pre-built binary** — Source code is available on GitHub for auditing, and the release script is transparent about the build process.
 - **ARM-only** — Intel Mac users cannot install. This is acceptable given Apple Silicon adoption since 2020.
-- **No .app in Applications** — Users launch via terminal. The trade-off is no Dock icon or Finder integration, but the target audience (developers reviewing log files) works in the terminal.
+- **First-launch Gatekeeper prompt** — Ad-hoc signing means users must approve the app once via System Settings > Privacy & Security. Documented in both the README and formula caveats.
 
 ### Outcome
 
-Users install with `brew install emersonding/tap/lumen` — no Xcode, no version constraints, no Gatekeeper warnings. Install time drops from minutes (source compilation) to seconds (binary download).
+Users install with `brew install emersonding/tap/lumen` — no Xcode, no version constraints. They get both the `lumen` CLI and `Lumen.app` (optionally symlinked into `/Applications`). Install time drops from minutes (source compilation) to seconds (binary download).

@@ -33,7 +33,8 @@ A simple GUI log reviewer as an alternative to the macOS native Console app, wit
 - **Multiline log entries** - stack traces and continuation lines display fully with automatic row heights
 - **Auto-refresh** via file watching (detects appended content, log rotation, file deletion)
 - **Incremental refresh** - reads only new bytes on file change
-- **Keyboard shortcuts** - Cmd+F (search), Cmd+R (refresh), Cmd+O (open), Cmd+1-6 (toggle filters)
+- **Keyboard shortcuts** - Cmd+F (search), Cmd+R (refresh), Cmd+O (open), Cmd+0 (toggle sidebar), Cmd+1-6 (toggle filters)
+- **Sidebar + history panel** - tabs for all currently opened files and a persistent history of previously opened files (toggle with Cmd+0)
 - **Drag and drop** file opening
 - **Line numbers** in gutter
 - **Multi-format timestamp parsing** - ISO 8601 (`2026-04-13T10:00:00Z`), space-separated (`2026-04-13 10:00:00`), syslog (`Apr 13 10:30:00`), Unix epoch
@@ -107,7 +108,7 @@ open /Applications/Lumen.app
 
 ## Testing
 
-### Unit tests (~139 tests)
+### Unit tests (~133 tests)
 
 ```bash
 swift test
@@ -165,7 +166,8 @@ lumen-log-viewer/
 │   │   ├── LogLevel.swift     # FATAL..TRACE enum (via LogEntry)
 │   │   ├── FilterState.swift  # Level + time range filter state
 │   │   ├── SearchState.swift  # Query, mode, match tracking
-│   │   └── SettingsState.swift# Font size, line wrap, auto-refresh
+│   │   ├── SettingsState.swift# Font size, line wrap, auto-refresh
+│   │   └── OpenedFile.swift   # Opened-file + history entry model
 │   ├── Services/
 │   │   ├── LogParser.swift    # Chunk-based async parser with regex
 │   │   ├── FileWatcher.swift  # DispatchSource file monitoring
@@ -182,6 +184,7 @@ lumen-log-viewer/
 │       ├── LogLineView.swift  # Single log line with gutter + highlight
 │       ├── SearchBar.swift    # Search field + match counter + Cmd+F
 │       ├── FilterBar.swift    # Level toggles + All/None
+│       ├── SidebarView.swift  # Opened-files tabs + file history panel
 │       ├── StatusBarView.swift# Line counts + active filter indicators
 │       ├── TimeRangePickerView.swift # Date pickers with seconds
 │       └── SettingsView.swift # App preferences (Cmd+,)
@@ -219,6 +222,7 @@ lumen-log-viewer/
 | Cmd+G | Next search match |
 | Shift+Cmd+G | Previous search match |
 | Cmd+L | Toggle line wrap |
+| Cmd+0 | Toggle sidebar (opened files + history) |
 | Cmd+1-6 | Toggle FATAL/ERROR/WARNING/INFO/DEBUG/TRACE filter |
 | Cmd+, | Settings |
 

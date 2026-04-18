@@ -141,15 +141,24 @@ echo "2026-04-13 10:00:00 ERROR Failed with: 日本語 émojis 🚀" > special_c
 
 ## XCUITest Setup (If Xcode is Available)
 
-If you have Xcode installed, you can write formal UI tests:
+If you have Xcode installed, you can run the full UI test suite.
+The canonical path uses [xcodegen](https://github.com/yonaskolb/XcodeGen) to
+generate the Xcode project from `project.yml`:
 
 ```bash
-# Generate Xcode project
-swift package generate-xcodeproj  # (deprecated, use Xcode to open Package.swift directly)
+# Generate Xcode project (one-time, or after project.yml changes)
+xcodegen generate
 
-# Or open in Xcode
-open Package.swift
+# Run UI tests from the command line
+xcodebuild test -project Lumen.xcodeproj -scheme Lumen \
+  -only-testing LumenUITests -destination 'platform=macOS'
+
+# Or open in Xcode and Cmd+U
+open Lumen.xcodeproj
 ```
+
+> Note: `swift package generate-xcodeproj` has been removed from Swift Package
+> Manager. Use `xcodegen generate` (via `project.yml`) for the UI test target.
 
 Then add a UI test target in Xcode with tests like:
 
