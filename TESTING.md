@@ -75,6 +75,9 @@ If you see "0 entries parsed" or "0 entries displayed", the issue is in parsing 
 ### Refresh
 - [ ] Cmd+R refreshes file
 - [ ] New content appears after refresh
+- [ ] Toolbar refresh button reloads the current file
+- [ ] Changing the log font size updates visible rows
+- [ ] Adding extracted fields like `request_id`, `user`, or `status` creates columns from `field=value` log messages
 
 ### Settings
 - [ ] Cmd+L toggles line wrap

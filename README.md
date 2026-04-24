@@ -25,6 +25,7 @@ A simple GUI log reviewer as an alternative to the macOS native Console app, wit
 
 - **High-performance rendering** with AppKit NSTableView — native cell reuse and `reloadData()` handles millions of rows smoothly. Tested with 500MB / 5M+ row log files.
 - **Fast file loading** with memory-mapped I/O for large files (up to 2GB), progress bar during indexing/parsing
+- **Custom extracted fields** - add columns for plain-text `field=value`, `field="value"`, or `field='value'` patterns without reparsing or reindexing the file
 - **Log level filtering** - toggle FATAL, ERROR, WARNING, INFO, DEBUG, TRACE with debounced updates
 - **Bracketed log level parsing** - detects both `[ERROR]` and bare `ERROR` formats
 - **Search** with two modes: jump-to-match (highlight + navigate) and filter-to-match (hide non-matches), O(1) match lookups
@@ -32,12 +33,19 @@ A simple GUI log reviewer as an alternative to the macOS native Console app, wit
 - **Syntax highlighting** with pre-compiled regex, cached NSAttributedString rendering, native NSColor for AppKit
 - **Multiline log entries** - stack traces and continuation lines display fully with automatic row heights
 - **Auto-refresh** via file watching (detects appended content, log rotation, file deletion)
-- **Incremental refresh** - reads only new bytes on file change
+- **Manual and incremental refresh** - refresh from the toolbar or Cmd+R; file-change refresh reads only new bytes
+- **Adjustable log font size** - table rows and syntax highlighting update when the font size changes
 - **Keyboard shortcuts** - Cmd+F (search), Cmd+R (refresh), Cmd+O (open), Cmd+0 (toggle sidebar), Cmd+1-6 (toggle filters)
 - **Sidebar + history panel** - tabs for all currently opened files and a persistent history of previously opened files (toggle with Cmd+0)
 - **Drag and drop** file opening
 - **Line numbers** in gutter
 - **Multi-format timestamp parsing** - ISO 8601 (`2026-04-13T10:00:00Z`), space-separated (`2026-04-13 10:00:00`), syslog (`Apr 13 10:30:00`), Unix epoch
+
+## What's New in 2.2.0
+
+- Fixed log table font size changes so visible rows update immediately.
+- Added a main-view refresh button for manual file reloads, alongside Cmd+R.
+- Added custom extracted field columns for common plain-text key-value logs, including quoted and unquoted values.
 
 ## Scale
 

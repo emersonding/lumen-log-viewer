@@ -204,9 +204,9 @@ Key design choices:
 ### Release Flow
 
 ```
-./scripts/release.sh 2.1.0
+./scripts/release.sh 2.2.0
   → runs build_app.sh (swift build -c release + ad-hoc sign Lumen.app)
-  → packages .build/release/Lumen + build/Lumen.app into lumen-2.1.0-arm64.tar.gz
+  → packages .build/release/Lumen + build/Lumen.app into lumen-2.2.0-arm64.tar.gz
   → creates GitHub release with the tarball attached
   → copies Formula/lumen.rb to the tap repo, patches url/sha256/version
   → commits and pushes the tap
