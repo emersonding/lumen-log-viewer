@@ -182,14 +182,30 @@ struct ContentView: View {
         @Bindable var vm = viewModel
 
         return VStack(spacing: 0) {
-            // Search bar
-            SearchBar(shouldBeFocused: $focusSearchBar)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.controlBackgroundColor))
-                .overlay(alignment: .bottom) {
-                    Divider()
+            // Search and file actions
+            HStack(spacing: 8) {
+                SearchBar(shouldBeFocused: $focusSearchBar)
+
+                Button {
+                    Task {
+                        await vm.refresh()
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .accessibilityHidden(true)
                 }
+                .buttonStyle(.bordered)
+                .disabled(vm.currentFileURL == nil || vm.isLoading)
+                .help("Refresh file")
+                .accessibilityLabel("Refresh file")
+                .accessibilityHint("Reads new content from the current log file")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(.controlBackgroundColor))
+            .overlay(alignment: .bottom) {
+                Divider()
+            }
 
             // Filter bar
             FilterBar(viewModel: vm)
