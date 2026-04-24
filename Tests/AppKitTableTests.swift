@@ -147,6 +147,26 @@ final class AppKitTableTests: XCTestCase {
         XCTAssertEqual(first.string, second.string)
     }
 
+    func testHighlightNSCacheIncludesFontSize() {
+        let entry = LogEntry(
+            lineNumber: 1,
+            timestamp: nil,
+            level: .info,
+            message: "Cached",
+            rawLine: "[INFO] Cached"
+        )
+
+        let highlighter = SyntaxHighlighter()
+        let small = highlighter.highlightMessageNS(entry, fontSize: 12)
+        let large = highlighter.highlightMessageNS(entry, fontSize: 18)
+
+        let smallFont = small.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        let largeFont = large.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+
+        XCTAssertEqual(smallFont?.pointSize, 12)
+        XCTAssertEqual(largeFont?.pointSize, 18)
+    }
+
     // MARK: - Filter Change Counter
 
     func testFilterChangeCounterIncrements() {

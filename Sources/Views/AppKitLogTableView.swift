@@ -109,8 +109,11 @@ struct AppKitLogTableView: NSViewRepresentable {
 
         // Reload data when filterChangeCounter changes
         let currentCounter = viewModel.filterChangeCounter
-        if coordinator.lastFilterChangeCounter != currentCounter {
+        let currentFontSize = viewModel.settingsState.fontSize
+        if coordinator.lastFilterChangeCounter != currentCounter || coordinator.lastFontSize != currentFontSize {
             coordinator.lastFilterChangeCounter = currentCounter
+            coordinator.lastFontSize = currentFontSize
+            tableView.rowHeight = coordinator.computeRowHeight(fontSize: currentFontSize)
 
             // Widen content column to fill remaining space
             if let contentColumn = tableView.tableColumn(withIdentifier: Self.contentColumnID) {
@@ -147,6 +150,7 @@ struct AppKitLogTableView: NSViewRepresentable {
         weak var tableView: NSTableView?
         weak var scrollView: NSScrollView?
         var lastFilterChangeCounter: Int = -1
+        var lastFontSize: Double = -1
         var lastScrolledMatchID: UUID?
 
         private let highlighter = SyntaxHighlighter()

@@ -82,7 +82,7 @@ final class SyntaxHighlighter {
     /// (the SwiftUI Color attributes from `highlight()` don't survive the
     /// AttributedString→NSAttributedString conversion reliably).
     func highlightNS(_ entry: LogEntry, fontSize: Double) -> NSAttributedString {
-        let nsCacheKey = ("ns:" + entry.id.uuidString) as NSString
+        let nsCacheKey = ("ns:\(fontSize):" + entry.id.uuidString) as NSString
 
         if let cached = cache.object(forKey: nsCacheKey) {
             return cached
@@ -145,7 +145,7 @@ final class SyntaxHighlighter {
     /// Since timestamp and level are in separate columns, this only applies
     /// quoted-string highlighting — skipping timestamp/level regex passes entirely.
     func highlightMessageNS(_ entry: LogEntry, fontSize: Double) -> NSAttributedString {
-        let nsCacheKey = ("msg:" + entry.id.uuidString) as NSString
+        let nsCacheKey = ("msg:\(fontSize):" + entry.id.uuidString) as NSString
 
         if let cached = cache.object(forKey: nsCacheKey) {
             return cached
