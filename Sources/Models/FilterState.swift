@@ -8,7 +8,7 @@
 import Foundation
 
 /// State for log level and time range filtering
-struct FilterState: Sendable {
+struct FilterState: Codable, Sendable {
     var enabledLevels: Set<LogLevel>
     var timeRangeStart: Date?
     var timeRangeEnd: Date?

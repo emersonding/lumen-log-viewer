@@ -10,7 +10,7 @@ import Observation
 
 // MARK: - Sort Order
 
-enum TimestampSortOrder {
+enum TimestampSortOrder: String, Codable, Sendable {
     case original   // file order
     case ascending  // oldest first
     case descending // newest first
@@ -70,6 +70,9 @@ final class LogViewModel {
     /// All currently opened files (tabs)
     var openedFiles: [OpenedFile] = []
 
+    /// Active tab path, even while the file is reloading.
+    var activeTabPath: String? = nil
+
     /// History of previously opened files
     var fileHistory: [OpenedFile] = []
 
@@ -87,6 +90,8 @@ final class LogViewModel {
     private let maxHistoryCount = 50
     private let historyKey = "fileHistoryPaths"
     private let sidebarVisibleKey = "isSidebarVisible"
+    private let workspaceKey = "openedFileWorkspace"
+    private let userDefaults: UserDefaults
 
     private let parser = LogParser()
     private let fileSizeWarningThreshold: Int64 = 1_000_000_000 // 1GB
@@ -118,11 +123,16 @@ final class LogViewModel {
     /// Cached field regexes keyed by exact field name.
     private var fieldRegexCache: [String: NSRegularExpression] = [:]
 
+    private var tabSnapshotsByPath: [String: FileTabSnapshot] = [:]
+    private var didRestoreWorkspace = false
+
     // MARK: - Initialization
 
-    init() {
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
         loadHistory()
-        isSidebarVisible = UserDefaults.standard.object(forKey: sidebarVisibleKey) as? Bool ?? true
+        loadWorkspace()
+        isSidebarVisible = userDefaults.object(forKey: sidebarVisibleKey) as? Bool ?? true
     }
 
     // MARK: - Public Methods
@@ -138,6 +148,7 @@ final class LogViewModel {
 
         extractedFieldNames.append(name)
         fieldChangeCounter += 1
+        saveCurrentTabSnapshot()
     }
 
     /// Remove a previously added extracted field column.
@@ -146,7 +157,53 @@ final class LogViewModel {
         extractedFieldNames.removeAll { $0 == name }
         if extractedFieldNames.count != oldCount {
             fieldChangeCounter += 1
+            saveCurrentTabSnapshot()
         }
+    }
+
+    var activeTabURL: URL? {
+        activeOpenedFile?.url ?? currentFileURL
+    }
+
+    var activeOpenedFile: OpenedFile? {
+        guard let activeTabPath else { return nil }
+        return openedFiles.first { $0.url.path == activeTabPath }
+    }
+
+    func openOrActivateTab(url: URL) async {
+        let normalizedURL = normalizedFileURL(url)
+
+        if let existing = openedFiles.first(where: { $0.url.path == normalizedURL.path }) {
+            await activateTab(existing)
+            return
+        }
+
+        let previousFile = activeOpenedFile
+        let newFile = OpenedFile(url: normalizedURL)
+
+        saveCurrentTabSnapshot()
+        openedFiles.append(newFile)
+        activeTabPath = normalizedURL.path
+        persistWorkspace()
+
+        await openFile(url: normalizedURL)
+
+        guard currentFileURL?.path == normalizedURL.path, errorMessage == nil else {
+            openedFiles.removeAll { $0.url.path == normalizedURL.path }
+            tabSnapshotsByPath.removeValue(forKey: normalizedURL.path)
+            activeTabPath = nil
+            persistWorkspace()
+
+            if let previousFile {
+                await activateTab(previousFile, saveCurrent: false)
+            } else {
+                closeFile()
+                persistWorkspace()
+            }
+            return
+        }
+
+        saveCurrentTabSnapshot()
     }
 
     /// Validate common logfmt-style field names.
@@ -268,12 +325,8 @@ final class LogViewModel {
             // Apply current filters
             applyFilters()
 
-            // Track opened file and history
-            let openedFile = OpenedFile(url: url)
-            if !openedFiles.contains(where: { $0.url == url }) {
-                openedFiles.append(openedFile)
-            }
-            addToHistory(openedFile)
+            // Track history
+            addToHistory(OpenedFile(url: url))
 
             // Start file watching for auto-refresh
             startFileWatching()
@@ -309,6 +362,7 @@ final class LogViewModel {
 
         // For large datasets, debounce + run in background
         if allEntries.count > backgroundTaskThreshold {
+            saveCurrentTabSnapshot()
             filterTask = Task {
                 // Debounce: wait briefly so rapid toggles coalesce into one filter pass
                 try? await Task.sleep(nanoseconds: filterDebounceNs)
@@ -328,6 +382,7 @@ final class LogViewModel {
                 }
             }
         } else {
+            saveCurrentTabSnapshot()
             // For small datasets, filter synchronously
             var filtered = performFilteringSynchronous()
             if timestampSortOrder != .original {
@@ -687,25 +742,70 @@ final class LogViewModel {
         partialLineBuffer = nil
         hasNewContent = false
         errorMessage = nil
+        isLoading = false
+        loadingProgress = 0.0
     }
 
     // MARK: - Opened Files & History
 
     /// Close an opened file tab
-    func closeOpenedFile(_ file: OpenedFile) {
-        openedFiles.removeAll { $0.url == file.url }
-        if currentFileURL == file.url {
-            if let next = openedFiles.first {
-                Task { await openFile(url: next.url) }
-            } else {
-                closeFile()
+    func closeOpenedFile(_ file: OpenedFile) async {
+        guard let index = openedFiles.firstIndex(where: { $0.url.path == file.url.path }) else {
+            return
+        }
+
+        let wasActive = activeTabPath == file.url.path
+        let nextFile: OpenedFile? = {
+            guard wasActive else { return nil }
+            if index > 0 {
+                return openedFiles[index - 1]
             }
+            if index + 1 < openedFiles.count {
+                return openedFiles[index + 1]
+            }
+            return nil
+        }()
+
+        openedFiles.remove(at: index)
+        tabSnapshotsByPath.removeValue(forKey: file.url.path)
+
+        if let nextFile {
+            activeTabPath = nextFile.url.path
+            persistWorkspace()
+            await activateTab(nextFile, saveCurrent: false)
+        } else if wasActive {
+            activeTabPath = nil
+            closeFile()
+            persistWorkspace()
+        } else {
+            persistWorkspace()
         }
     }
 
     /// Switch to a previously opened file
     func switchToFile(_ file: OpenedFile) async {
-        await openFile(url: file.url)
+        await activateTab(file)
+    }
+
+    func restoreWorkspaceIfNeeded() async {
+        guard !didRestoreWorkspace else { return }
+        didRestoreWorkspace = true
+
+        guard currentFileURL == nil, !openedFiles.isEmpty else { return }
+
+        let existingFiles = openedFiles.filter(\.existsOnDisk)
+        if existingFiles.count != openedFiles.count {
+            let validPaths = Set(existingFiles.map { $0.url.path })
+            openedFiles = existingFiles
+            tabSnapshotsByPath = tabSnapshotsByPath.filter { validPaths.contains($0.key) }
+            if let activeTabPath, !validPaths.contains(activeTabPath) {
+                self.activeTabPath = existingFiles.first?.url.path
+            }
+            persistWorkspace()
+        }
+
+        guard let file = activeOpenedFile ?? openedFiles.first else { return }
+        await activateTab(file, saveCurrent: false)
     }
 
     /// Toggle sidebar visibility
@@ -716,7 +816,7 @@ final class LogViewModel {
     /// Set sidebar visibility explicitly
     func setSidebarVisible(_ visible: Bool) {
         isSidebarVisible = visible
-        UserDefaults.standard.set(visible, forKey: sidebarVisibleKey)
+        userDefaults.set(visible, forKey: sidebarVisibleKey)
     }
 
     /// Remove a single entry from history
@@ -744,12 +844,12 @@ final class LogViewModel {
     /// Persist history paths to UserDefaults
     private func saveHistory() {
         let paths = fileHistory.map { $0.url.path }
-        UserDefaults.standard.set(paths, forKey: historyKey)
+        userDefaults.set(paths, forKey: historyKey)
     }
 
     /// Load history from UserDefaults
     private func loadHistory() {
-        guard let paths = UserDefaults.standard.stringArray(forKey: historyKey) else { return }
+        guard let paths = userDefaults.stringArray(forKey: historyKey) else { return }
         fileHistory = paths.map { OpenedFile(url: URL(fileURLWithPath: $0)) }
     }
 
@@ -773,6 +873,20 @@ final class LogViewModel {
             timestampSortOrder = .original
         }
         applyFilters()
+    }
+
+    func persistWorkspace() {
+        let workspace = OpenedFilesWorkspace(
+            openedFiles: openedFiles,
+            activeTabPath: activeTabPath,
+            tabSnapshotsByPath: tabSnapshotsByPath
+        )
+
+        guard let data = try? JSONEncoder().encode(workspace) else {
+            return
+        }
+
+        userDefaults.set(data, forKey: workspaceKey)
     }
 
     /// Sort entries by timestamp, keeping nil-timestamp entries grouped with
@@ -825,6 +939,82 @@ final class LogViewModel {
 
         fieldRegexCache[fieldName] = regex
         return regex
+    }
+
+    private func activateTab(_ file: OpenedFile, saveCurrent: Bool = true) async {
+        if saveCurrent {
+            saveCurrentTabSnapshot()
+        }
+
+        activeTabPath = file.url.path
+        restoreSnapshot(for: file.url.path)
+        persistWorkspace()
+        await openFile(url: file.url)
+
+        if currentFileURL?.path == file.url.path, errorMessage == nil {
+            saveCurrentTabSnapshot()
+        }
+    }
+
+    @discardableResult
+    private func saveCurrentTabSnapshot() -> Bool {
+        guard let activeTabPath else { return false }
+
+        tabSnapshotsByPath[activeTabPath] = FileTabSnapshot(
+            filterState: filterState,
+            searchQuery: searchState.query,
+            searchMode: searchState.mode,
+            isCaseSensitive: searchState.isCaseSensitive,
+            timestampSortOrder: timestampSortOrder,
+            extractedFieldNames: extractedFieldNames
+        )
+        persistWorkspace()
+        return true
+    }
+
+    private func restoreSnapshot(for path: String) {
+        guard let snapshot = tabSnapshotsByPath[path] else {
+            searchState.matchingLineIDs = []
+            searchState.currentMatchIndex = 0
+            return
+        }
+
+        filterState = snapshot.filterState
+        searchState.query = snapshot.searchQuery
+        searchState.mode = snapshot.searchMode
+        searchState.isCaseSensitive = snapshot.isCaseSensitive
+        searchState.matchingLineIDs = []
+        searchState.currentMatchIndex = 0
+        timestampSortOrder = snapshot.timestampSortOrder
+
+        let previousFields = extractedFieldNames
+        extractedFieldNames = snapshot.extractedFieldNames
+        if previousFields != extractedFieldNames {
+            fieldChangeCounter += 1
+        }
+    }
+
+    private func loadWorkspace() {
+        guard let data = userDefaults.data(forKey: workspaceKey),
+              let workspace = try? JSONDecoder().decode(OpenedFilesWorkspace.self, from: data) else {
+            return
+        }
+
+        let existingFiles = workspace.openedFiles.filter(\.existsOnDisk)
+        let existingPaths = Set(existingFiles.map { $0.url.path })
+
+        openedFiles = existingFiles
+        tabSnapshotsByPath = workspace.tabSnapshotsByPath.filter { existingPaths.contains($0.key) }
+
+        if let activeTabPath = workspace.activeTabPath, existingPaths.contains(activeTabPath) {
+            self.activeTabPath = activeTabPath
+        } else {
+            self.activeTabPath = existingFiles.first?.url.path
+        }
+    }
+
+    private func normalizedFileURL(_ url: URL) -> URL {
+        url.standardizedFileURL
     }
 }
 

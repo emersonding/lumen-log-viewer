@@ -5,6 +5,7 @@
 //  Created on 2026-04-13.
 //
 
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -22,15 +23,13 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
             VStack(spacing: 0) {
-                if viewModel.isLoading {
-                    loadingView
-                } else if viewModel.currentFileURL == nil {
-                    welcomeView
-                } else if viewModel.errorMessage != nil {
-                    errorView
-                } else {
-                    mainContentView
+                if !viewModel.openedFiles.isEmpty {
+                    tabStrip
+                        .padding(.top, 28)
+                        .zIndex(1)
                 }
+
+                detailContent
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -68,7 +67,7 @@ struct ContentView: View {
     // MARK: - Window Title
 
     private var windowTitle: String {
-        guard let url = viewModel.currentFileURL else {
+        guard let url = viewModel.activeTabURL else {
             return "Lumen"
         }
 
@@ -125,7 +124,7 @@ struct ContentView: View {
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
-            if let url = viewModel.currentFileURL {
+            if let url = viewModel.activeTabURL {
                 Text(url.lastPathComponent)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -178,6 +177,19 @@ struct ContentView: View {
 
     // MARK: - Main Content View
 
+    @ViewBuilder
+    private var detailContent: some View {
+        if viewModel.isLoading {
+            loadingView
+        } else if viewModel.currentFileURL == nil {
+            welcomeView
+        } else if viewModel.errorMessage != nil {
+            errorView
+        } else {
+            mainContentView
+        }
+    }
+
     @MainActor
     private var mainContentView: some View {
         @Bindable var vm = viewModel
@@ -200,6 +212,18 @@ struct ContentView: View {
                 .help("Refresh file")
                 .accessibilityLabel("Refresh file")
                 .accessibilityHint("Reads new content from the current log file")
+
+                Button {
+                    revealCurrentFileInFinder()
+                } label: {
+                    Image(systemName: "folder")
+                        .accessibilityHidden(true)
+                }
+                .buttonStyle(.bordered)
+                .disabled(vm.currentFileURL == nil)
+                .help("Show file in Finder")
+                .accessibilityLabel("Show file in Finder")
+                .accessibilityHint("Reveals the current log file in Finder")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -232,6 +256,68 @@ struct ContentView: View {
             // Status bar
             StatusBarView(viewModel: vm)
         }
+    }
+
+    private var tabStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.openedFiles) { file in
+                    tabButton(for: file)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .background(Color(.windowBackgroundColor))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
+    private func tabButton(for file: OpenedFile) -> some View {
+        let isActive = viewModel.activeTabPath == file.url.path
+
+        return HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: isActive ? "doc.text.fill" : "doc.text")
+                Text(file.displayName)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(width: 180, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .onTapGesture {
+                Task {
+                    await viewModel.switchToFile(file)
+                }
+            }
+            .foregroundStyle(isActive ? Color.primary : Color.secondary)
+            .accessibilityLabel("Open tab \(file.displayName)")
+
+            Button {
+                Task {
+                    await viewModel.closeOpenedFile(file)
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .accessibilityHidden(true)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(isActive ? .primary : .secondary)
+            .accessibilityLabel("Close tab \(file.displayName)")
+        }
+        .padding(.trailing, 10)
+        .background(isActive ? Color.accentColor.opacity(0.14) : Color(.controlBackgroundColor))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isActive ? Color.accentColor.opacity(0.35) : Color.black.opacity(0.08), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func extractedFieldsBar(vm: LogViewModel) -> some View {
@@ -318,7 +404,7 @@ struct ContentView: View {
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 Task {
-                    await viewModel.openFile(url: url)
+                    await viewModel.openOrActivateTab(url: url)
                 }
             }
         }
@@ -337,11 +423,16 @@ struct ContentView: View {
             }
 
             Task { @MainActor in
-                await viewModel.openFile(url: url)
+                await viewModel.openOrActivateTab(url: url)
             }
         }
 
         return true
+    }
+
+    private func revealCurrentFileInFinder() {
+        guard let url = viewModel.activeTabURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 }
 

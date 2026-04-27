@@ -14,18 +14,17 @@ extension Notification.Name {
 
 final class AppFileOpenCoordinator {
     private var pendingURLs: [URL] = []
-    private var openHandler: ((URL) -> Void)?
+    private var openHandler: (([URL]) -> Void)?
 
-    func setOpenHandler(_ handler: @escaping (URL) -> Void) {
+    func setOpenHandler(_ handler: @escaping ([URL]) -> Void) {
         openHandler = handler
+    }
 
-        guard !pendingURLs.isEmpty else { return }
+    func flushPendingURLs() {
+        guard let openHandler, !pendingURLs.isEmpty else { return }
         let urls = pendingURLs
         pendingURLs.removeAll()
-
-        for url in urls {
-            handler(url)
-        }
+        openHandler(urls)
     }
 
     @discardableResult
@@ -34,9 +33,7 @@ final class AppFileOpenCoordinator {
         guard !fileURLs.isEmpty else { return false }
 
         if let openHandler {
-            for url in fileURLs {
-                openHandler(url)
-            }
+            openHandler(fileURLs)
         } else {
             pendingURLs.append(contentsOf: fileURLs)
         }
@@ -73,12 +70,13 @@ final class LumenAppDelegate: NSObject, NSApplicationDelegate {
 @main
 @MainActor
 struct LumenApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @NSApplicationDelegateAdaptor(LumenAppDelegate.self) private var appDelegate
     @State private var viewModel = LogViewModel()
     @State private var didConfigureFileHandling = false
 
     var body: some Scene {
-        WindowGroup {
+        Window("Lumen", id: "main") {
             ContentView()
                 .environment(viewModel)
                 .onOpenURL { url in
@@ -89,6 +87,11 @@ struct LumenApp: App {
                     NSApplication.shared.setActivationPolicy(.regular)
                     NSApplication.shared.activate(ignoringOtherApps: true)
                     configureFileHandlingIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, newValue in
+                    if newValue != .active {
+                        viewModel.persistWorkspace()
+                    }
                 }
         }
         .commands {
@@ -208,10 +211,17 @@ struct LumenApp: App {
         guard !didConfigureFileHandling else { return }
         didConfigureFileHandling = true
 
-        appDelegate.fileOpenCoordinator.setOpenHandler { url in
+        appDelegate.fileOpenCoordinator.setOpenHandler { urls in
             Task {
-                await viewModel.openFile(url: url)
+                for url in urls {
+                    await viewModel.openOrActivateTab(url: url)
+                }
             }
+        }
+
+        Task {
+            await viewModel.restoreWorkspaceIfNeeded()
+            appDelegate.fileOpenCoordinator.flushPendingURLs()
         }
 
         if let launchURL = AppFileOpenCoordinator.launchURL(from: CommandLine.arguments) {
@@ -235,7 +245,7 @@ struct LumenApp: App {
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 Task {
-                    await viewModel.openFile(url: url)
+                    await viewModel.openOrActivateTab(url: url)
                 }
             }
         }

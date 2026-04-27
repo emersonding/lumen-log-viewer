@@ -12,21 +12,45 @@ import XCTest
 final class LogViewModelTests: XCTestCase {
     var viewModel: LogViewModel!
     var testDataDirectory: URL!
+    var tempOutputDirectory: URL!
+    var userDefaults: UserDefaults!
+    var userDefaultsSuiteName: String!
 
     override func setUp() async throws {
-        viewModel = LogViewModel()
+        userDefaultsSuiteName = "LogViewModelTests-\(UUID().uuidString)"
+        userDefaults = UserDefaults(suiteName: userDefaultsSuiteName)!
+        userDefaults.removePersistentDomain(forName: userDefaultsSuiteName)
+        viewModel = LogViewModel(userDefaults: userDefaults)
 
         // Get test data directory
         let currentFile = URL(fileURLWithPath: #file)
         let testsDirectory = currentFile.deletingLastPathComponent()
         testDataDirectory = testsDirectory.appendingPathComponent("TestData")
+        tempOutputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LumenTests-\(UUID().uuidString)", isDirectory: true)
 
         // Create test data directory if it doesn't exist
         try? FileManager.default.createDirectory(at: testDataDirectory, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: tempOutputDirectory, withIntermediateDirectories: true)
     }
 
     override func tearDown() {
+        if let userDefaultsSuiteName {
+            userDefaults.removePersistentDomain(forName: userDefaultsSuiteName)
+        }
+        if let tempOutputDirectory {
+            try? FileManager.default.removeItem(at: tempOutputDirectory)
+        }
         viewModel = nil
+        tempOutputDirectory = nil
+        userDefaults = nil
+        userDefaultsSuiteName = nil
+    }
+
+    private func makeTempLogFile(named name: String, contents: String) throws -> URL {
+        let url = tempOutputDirectory.appendingPathComponent(name)
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url
     }
 
     // MARK: - File Loading Tests
@@ -160,9 +184,10 @@ final class LogViewModelTests: XCTestCase {
 
         XCTAssertTrue(coordinator.handleOpen(urls: [firstURL, secondURL]))
 
-        coordinator.setOpenHandler { url in
-            openedURLs.append(url)
+        coordinator.setOpenHandler { urls in
+            openedURLs.append(contentsOf: urls)
         }
+        coordinator.flushPendingURLs()
 
         XCTAssertEqual(openedURLs, [firstURL, secondURL])
     }
@@ -854,5 +879,111 @@ final class LogViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.searchState.hasMatches)
         XCTAssertEqual(viewModel.searchState.matchCount, 0)
         XCTAssertEqual(viewModel.searchState.currentMatchIndex, 0)
+    }
+
+    // MARK: - File Tab Tests
+
+    func testOpenOrActivateTabAddsTabsAndDeduplicates() async throws {
+        let firstURL = try makeTempLogFile(
+            named: "tab-first.log",
+            contents: "2026-04-13T10:00:00Z INFO First\n"
+        )
+        let secondURL = try makeTempLogFile(
+            named: "tab-second.log",
+            contents: "2026-04-13T10:00:00Z ERROR Second\n"
+        )
+
+        await viewModel.openOrActivateTab(url: firstURL)
+        await viewModel.openOrActivateTab(url: secondURL)
+        await viewModel.openOrActivateTab(url: firstURL)
+
+        XCTAssertEqual(viewModel.openedFiles.map(\.url.path), [firstURL.path, secondURL.path])
+        XCTAssertEqual(viewModel.activeTabPath, firstURL.path)
+    }
+
+    func testSwitchToFileRestoresSavedTabState() async throws {
+        let firstURL = try makeTempLogFile(
+            named: "tab-state-first.log",
+            contents: """
+            2026-04-13T10:00:00Z INFO request_id=abc First
+            2026-04-13T10:00:01Z ERROR request_id=def Failed
+            """
+        )
+        let secondURL = try makeTempLogFile(
+            named: "tab-state-second.log",
+            contents: """
+            2026-04-13T10:00:00Z INFO request_id=xyz Second
+            2026-04-13T10:00:01Z WARNING request_id=uvw Warn
+            """
+        )
+
+        await viewModel.openOrActivateTab(url: firstURL)
+        viewModel.filterState.enabledLevels = [.error]
+        viewModel.searchState.query = "Failed"
+        viewModel.searchState.mode = .filterToMatch
+        viewModel.addExtractedField("request_id")
+        viewModel.applyFilters()
+
+        await viewModel.openOrActivateTab(url: secondURL)
+        viewModel.filterState.enabledLevels = [.info]
+        viewModel.searchState.query = ""
+        viewModel.removeExtractedField("request_id")
+        viewModel.applyFilters()
+
+        let firstTab = try XCTUnwrap(viewModel.openedFiles.first { $0.url.path == firstURL.path })
+        await viewModel.switchToFile(firstTab)
+
+        XCTAssertEqual(viewModel.activeTabPath, firstURL.path)
+        XCTAssertEqual(viewModel.filterState.enabledLevels, [.error])
+        XCTAssertEqual(viewModel.searchState.query, "Failed")
+        XCTAssertEqual(viewModel.searchState.mode, .filterToMatch)
+        XCTAssertEqual(viewModel.extractedFieldNames, ["request_id"])
+    }
+
+    func testCloseOpenedFileActivatesLeftNeighbor() async throws {
+        let firstURL = try makeTempLogFile(named: "close-first.log", contents: "2026-04-13T10:00:00Z INFO First\n")
+        let secondURL = try makeTempLogFile(named: "close-second.log", contents: "2026-04-13T10:00:00Z INFO Second\n")
+        let thirdURL = try makeTempLogFile(named: "close-third.log", contents: "2026-04-13T10:00:00Z INFO Third\n")
+
+        await viewModel.openOrActivateTab(url: firstURL)
+        await viewModel.openOrActivateTab(url: secondURL)
+        await viewModel.openOrActivateTab(url: thirdURL)
+
+        let activeTab = try XCTUnwrap(viewModel.openedFiles.first { $0.url.path == thirdURL.path })
+        await viewModel.closeOpenedFile(activeTab)
+
+        XCTAssertEqual(viewModel.activeTabPath, secondURL.path)
+        XCTAssertEqual(viewModel.currentFileURL?.path, secondURL.path)
+        XCTAssertEqual(viewModel.openedFiles.map(\.url.path), [firstURL.path, secondURL.path])
+    }
+
+    func testRestoreWorkspaceRestoresTabsAndActiveFile() async throws {
+        let firstURL = try makeTempLogFile(
+            named: "restore-first.log",
+            contents: "2026-04-13T10:00:00Z ERROR First\n"
+        )
+        let secondURL = try makeTempLogFile(
+            named: "restore-second.log",
+            contents: "2026-04-13T10:00:00Z INFO Second\n"
+        )
+
+        await viewModel.openOrActivateTab(url: firstURL)
+        viewModel.filterState.enabledLevels = [.error]
+        viewModel.applyFilters()
+
+        await viewModel.openOrActivateTab(url: secondURL)
+        viewModel.searchState.query = "Second"
+        viewModel.searchState.mode = .filterToMatch
+        viewModel.applyFilters()
+        viewModel.persistWorkspace()
+
+        let restoredViewModel = LogViewModel(userDefaults: userDefaults)
+        await restoredViewModel.restoreWorkspaceIfNeeded()
+
+        XCTAssertEqual(restoredViewModel.openedFiles.map(\.url.path), [firstURL.path, secondURL.path])
+        XCTAssertEqual(restoredViewModel.activeTabPath, secondURL.path)
+        XCTAssertEqual(restoredViewModel.currentFileURL?.path, secondURL.path)
+        XCTAssertEqual(restoredViewModel.searchState.query, "Second")
+        XCTAssertEqual(restoredViewModel.searchState.mode, .filterToMatch)
     }
 }

@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct OpenedFile: Identifiable, Hashable {
+struct OpenedFile: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     let url: URL
     let openedAt: Date
@@ -26,4 +26,19 @@ struct OpenedFile: Identifiable, Hashable {
     var existsOnDisk: Bool {
         FileManager.default.fileExists(atPath: url.path)
     }
+}
+
+struct FileTabSnapshot: Codable, Sendable {
+    var filterState: FilterState
+    var searchQuery: String
+    var searchMode: SearchMode
+    var isCaseSensitive: Bool
+    var timestampSortOrder: TimestampSortOrder
+    var extractedFieldNames: [String]
+}
+
+struct OpenedFilesWorkspace: Codable, Sendable {
+    var openedFiles: [OpenedFile]
+    var activeTabPath: String?
+    var tabSnapshotsByPath: [String: FileTabSnapshot]
 }

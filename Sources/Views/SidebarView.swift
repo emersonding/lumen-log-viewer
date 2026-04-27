@@ -37,7 +37,7 @@ struct SidebarView: View {
     }
 
     private func openedFileRow(_ file: OpenedFile) -> some View {
-        let isActive = viewModel.currentFileURL == file.url
+        let isActive = viewModel.activeTabPath == file.url.path
         return Button {
             Task { await viewModel.switchToFile(file) }
         } label: {
@@ -59,7 +59,9 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button("Close") {
-                viewModel.closeOpenedFile(file)
+                Task {
+                    await viewModel.closeOpenedFile(file)
+                }
             }
         }
     }
@@ -92,7 +94,7 @@ struct SidebarView: View {
         let exists = file.existsOnDisk
         return Button {
             if exists {
-                Task { await viewModel.switchToFile(file) }
+                Task { await viewModel.openOrActivateTab(url: file.url) }
             }
         } label: {
             HStack {

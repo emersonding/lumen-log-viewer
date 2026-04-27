@@ -36,7 +36,7 @@ struct LogEntry: Identifiable, Sendable {
 }
 
 /// Log severity levels
-enum LogLevel: String, CaseIterable, Sendable {
+enum LogLevel: String, CaseIterable, Sendable, Codable {
     case fatal = "FATAL"
     case error = "ERROR"
     case warning = "WARNING"
