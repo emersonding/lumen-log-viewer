@@ -5,6 +5,7 @@
 //  Created on 2026-04-16.
 //
 
+import AppKit
 import SwiftUI
 
 @MainActor
@@ -63,6 +64,16 @@ struct SidebarView: View {
                     await viewModel.closeOpenedFile(file)
                 }
             }
+
+            Divider()
+
+            Button("Show in Finder") {
+                revealInFinder(file)
+            }
+
+            Button("Copy Path") {
+                copyPath(file)
+            }
         }
     }
 
@@ -116,9 +127,30 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .disabled(!exists)
         .contextMenu {
+            if exists {
+                Button("Show in Finder") {
+                    revealInFinder(file)
+                }
+            }
+
+            Button("Copy Path") {
+                copyPath(file)
+            }
+
+            Divider()
+
             Button("Remove from History") {
                 viewModel.removeFromHistory(file)
             }
         }
+    }
+
+    private func revealInFinder(_ file: OpenedFile) {
+        NSWorkspace.shared.activateFileViewerSelecting([file.url])
+    }
+
+    private func copyPath(_ file: OpenedFile) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(file.fullPath, forType: .string)
     }
 }

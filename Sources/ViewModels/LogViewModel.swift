@@ -125,6 +125,7 @@ final class LogViewModel {
 
     private var tabSnapshotsByPath: [String: FileTabSnapshot] = [:]
     private var didRestoreWorkspace = false
+    private var currentLoadToken = UUID()
 
     // MARK: - Initialization
 
@@ -236,6 +237,9 @@ final class LogViewModel {
     /// Open and parse a log file
     /// - Parameter url: File URL to open
     func openFile(url: URL) async {
+        let loadToken = UUID()
+        currentLoadToken = loadToken
+
         // Clear error state
         errorMessage = nil
 
@@ -297,14 +301,14 @@ final class LogViewModel {
             let vm = self
             lineIndex = await LineIndex.build(from: data) { fraction in
                 Task { @MainActor in
-                    vm.loadingProgress = fraction * 0.3
+                    vm.updateLoadingProgress(fraction * 0.3, for: loadToken)
                 }
             }
 
             // Parse the file with progress callback (progress: remaining 70%)
             let entries = await parser.parse(data) { fraction in
                 Task { @MainActor in
-                    vm.loadingProgress = 0.3 + fraction * 0.7
+                    vm.updateLoadingProgress(0.3 + fraction * 0.7, for: loadToken)
                 }
             }
 
@@ -1015,6 +1019,11 @@ final class LogViewModel {
 
     private func normalizedFileURL(_ url: URL) -> URL {
         url.standardizedFileURL
+    }
+
+    private func updateLoadingProgress(_ progress: Double, for token: UUID) {
+        guard token == currentLoadToken else { return }
+        loadingProgress = max(loadingProgress, progress)
     }
 }
 
